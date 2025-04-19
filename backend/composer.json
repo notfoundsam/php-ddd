@@ -1,0 +1,22 @@
+{
+  "autoload": {
+    "psr-4": {
+      "Admin\\": "src/Admin/",
+      "Marketing\\": "src/Marketing/",
+      "SharedKernel\\": "src/SharedKernel/"
+    }
+  },
+  "require": {
+    "php": "^7.4"
+  },
+  "require-dev": {
+    "slevomat/coding-standard": "^8.17",
+    "phpunit/phpunit": "^9.6",
+    "phpcompatibility/php-compatibility": "^9.3"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\Unit\\": "tests/Unit/"
+    }
+  }
+}
