@@ -5,7 +5,7 @@
     "keywords": ["application", "website", "development", "framework", "PHP", "PHP7"],
     "license": "MIT",
     "require": {
-        "php": ">=5.4",
+        "php": ">=7.4",
         "composer/installers": "~1.0",
         "fuel/core": "1.8.*",
         "fuel/auth": "1.8.*",
@@ -15,8 +15,22 @@
         "fuel/parser": "1.8.*",
         "fuelphp/upload": "2.0.6"
     },
+    "autoload": {
+        "psr-4": {
+            "Admin\\": "../backend/src/Admin/",
+            "Marketing\\": "../backend/src/Marketing/",
+            "SharedKernel\\": "../backend/src/SharedKernel/"
+        }
+    },
     "require-dev": {
-        "fuel/docs": "1.8.*"
+        "slevomat/coding-standard": "^8.17",
+        "phpunit/phpunit": "^9.6",
+        "phpcompatibility/php-compatibility": "^9.3"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\Unit\\": "../backend/tests/Unit/"
+        }
     },
     "suggest": {
         "dwoo/dwoo" : "Allow Dwoo templating with the Parser package",
@@ -28,7 +42,11 @@
         "zordius/lightncandy": "Allow Handlebars templating with an extremely fast PHP implementation of handlebars"
     },
     "config": {
-        "vendor-dir": "fuel/vendor"
+        "vendor-dir": "fuel/vendor",
+        "allow-plugins": {
+            "composer/installers": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     },
     "extra": {
         "installer-paths": {
