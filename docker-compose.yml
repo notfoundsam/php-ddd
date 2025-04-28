@@ -8,7 +8,7 @@ services:
     volumes:
       - php-ddd-db:/var/lib/mysql
     ports:
-      - "3340:3306"
+      - "3306:3306"
     networks:
       - php-ddd
   mail:
@@ -44,18 +44,27 @@ services:
       dockerfile: localhost/php.dockerfile
     environment:
       FUEL_ENV: development
-      APP_URL: http://localhost:8080
-      RDS_HOSTNAME: db
-      RDS_PORT: 3306
-      RDS_DB_NAME: ebdb
-      RDS_USERNAME: root
-      RDS_PASSWORD: root
+      APP_URL: http://localhost:8080/
       PHP_MEMORY_LIMIT: 256M
+      APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
+      APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a
+
+      # MySQL config
+      DB_HOSTNAME: db
+      DB_PORT: 3306
+      DB_DB_NAME: ebdb
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      # Redis config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
       # IDE config
       PHP_IDE_CONFIG: serverName=Docker
     volumes:
-      - ./:/app
+      - ./backend:/app/backend
+      - ./fuelphp:/app/fuelphp
     networks:
       - php-ddd
     depends_on:

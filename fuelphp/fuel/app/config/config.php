@@ -27,7 +27,7 @@ return array(
 	 *
 	 */
 
-	// 'base_url' => null,
+	'base_url' => getenv('APP_URL'),
 
 	/**
 	 * -------------------------------------------------------------------------
@@ -90,7 +90,7 @@ return array(
 
 	// 'ob_callback' => null,
 
-	// 'errors' => array(
+	'errors' => array(
 		/**
 		 * ---------------------------------------------------------------------
 		 *  Which errors should we show, but continue execution? You can add
@@ -103,7 +103,10 @@ return array(
 		 * ---------------------------------------------------------------------
 		 */
 
-		// 'continue_on' => array(),
+        // 'throttle' => -2,
+        // 'continue_on' => [
+        //     E_DEPRECATED,
+        // ],
 
 		/**
 		 * ---------------------------------------------------------------------
@@ -130,7 +133,7 @@ return array(
 		 */
 
 		// 'render_prior' => false,
-	// ),
+	),
 
 	/**
 	 * -------------------------------------------------------------------------
@@ -180,7 +183,7 @@ return array(
 	 *  Change the server's default timezone. This is optional.
 	 */
 
-	// 'default_timezone' => null,
+	'default_timezone' => 'UTC',
 
 	/**
 	 * -------------------------------------------------------------------------
@@ -228,7 +231,7 @@ return array(
 		 * ---------------------------------------------------------------------
 		 */
 
-		// 'token_salt' => 'put your salt value here to make the token more secure',
+		'token_salt' => getenv('APP_TOKEN_SALT'),
 
 		/**
 		 * ---------------------------------------------------------------------
@@ -242,7 +245,7 @@ return array(
 		 * ---------------------------------------------------------------------
 		 */
 
-		// 'allow_x_headers' => false,
+		'allow_x_headers' => true,
 
 		/**
 		 * ---------------------------------------------------------------------
