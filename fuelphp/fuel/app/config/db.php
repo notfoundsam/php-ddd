@@ -20,6 +20,23 @@
  *
  */
 
-return array(
+return [
+    'default' => [
+        'type'        => 'mysqli',
+        'connection'  => [
+            'hostname'   => getenv('DB_HOSTNAME'),
+            'port'       => getenv('DB_PORT'),
+            'database'   => getenv('DB_DB_NAME'),
+            'username'   => getenv('DB_USERNAME'),
+            'password'   => getenv('DB_PASSWORD'),
+        ],
+    ],
 
-);
+    'redis' => [
+        'default' => [
+            'hostname' => getenv('REDIS_HOST'),
+            'port' => getenv('REDIS_PORT'),
+            'timeout' => null,
+        ],
+    ],
+];
