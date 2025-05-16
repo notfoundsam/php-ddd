@@ -8,5 +8,11 @@ use DateTimeImmutable;
 
 interface EventInterface
 {
+    public function getId(): string;
+
+    public function getVersion(): int;
+
     public function occurredOn(): DateTimeImmutable;
+
+    public function serialize(): array;
 }

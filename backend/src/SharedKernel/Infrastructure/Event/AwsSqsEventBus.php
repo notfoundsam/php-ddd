@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Event\AwsSqs;
+namespace SharedKernel\Infrastructure\Event;
 
 use Aws\Sqs\SqsClient;
 use SharedKernel\Domain\Event\EventBusInterface;
@@ -11,29 +11,30 @@ use SharedKernel\Domain\Event\EventInterface;
 final class AwsSqsEventBus implements EventBusInterface
 {
     private SqsClient $sqs;
-    private AwsEventSerializer $serializer;
+
     private string $queueUrl;
 
-    public function __construct(SqsClient $sqs, AwsEventSerializer $serializer, string $queueUrl)
+    public function __construct(SqsClient $sqs, string $queueUrl)
     {
         $this->sqs = $sqs;
-        $this->serializer = $serializer;
         $this->queueUrl = $queueUrl;
     }
 
     public function publish(EventInterface $event): void
     {
-        $data = $this->serializer->serialize($event);
+        $groupId = get_class($event);
 
         $this->sqs->sendMessage([
             'QueueUrl' => $this->queueUrl,
-            'MessageBody' => json_encode($data),
+            'MessageBody' => $event->serialize(),
             'MessageAttributes' => [
                 'type' => [
                     'DataType' => 'String',
-                    'StringValue' => $data['type'],
+                    'StringValue' => $groupId,
                 ]
-            ]
+            ],
+            'MessageGroupId' => $groupId,
+            'MessageDeduplicationId' => $event->getId(),
         ]);
     }
 

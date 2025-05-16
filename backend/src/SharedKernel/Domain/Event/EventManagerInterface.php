@@ -8,6 +8,17 @@ use SharedKernel\Domain\Aggregate\AggregateRoot;
 
 interface EventManagerInterface
 {
-    public function collectFrom(AggregateRoot $aggregate): void;
-    public function releaseAll(): iterable;
+    public function collectFromAggregate(AggregateRoot $aggregate): void;
+
+    public function push(EventInterface $event): void;
+
+    /**
+     * @return iterable<EventInterface>
+     */
+    public function pullSynchronousEvents(): iterable;
+
+    /**
+     * @return iterable<EventInterface>
+     */
+    public function pullAsynchronousEvents(): iterable;
 }
