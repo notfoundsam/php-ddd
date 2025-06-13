@@ -3,6 +3,8 @@ install:
 	docker compose run --rm fuelphp composer -d fuelphp install
 build:
 	docker compose build
+composer-autoload:
+	docker compose run --rm fuelphp composer -d fuelphp dump-autoload
 up:
 	docker compose up -d
 stop:

@@ -38,6 +38,7 @@
   },
   "autoload-dev": {
     "psr-4": {
+      "Tests\\Fixtures\\": "../backend/tests/Fixtures/",
       "Tests\\Unit\\": "../backend/tests/Unit/"
     }
   },
