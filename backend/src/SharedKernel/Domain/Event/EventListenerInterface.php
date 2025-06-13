@@ -6,5 +6,4 @@ namespace SharedKernel\Domain\Event;
 
 interface EventListenerInterface
 {
-
 }

@@ -38,7 +38,7 @@ final class AwsSqsEventBus implements EventBusInterface
                 'type' => [
                     'DataType' => 'String',
                     'StringValue' => $groupId,
-                ]
+                ],
             ],
             'MessageGroupId' => $groupId,
             'MessageDeduplicationId' => $event->getId(),
