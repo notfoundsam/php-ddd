@@ -10,6 +10,7 @@ use SharedKernel\Application\Transaction\TransactionManagerInterface;
 use SharedKernel\Domain\Event\EventBusInterface;
 use SharedKernel\Domain\Event\EventDispatcherInterface;
 use SharedKernel\Domain\Event\EventManagerInterface;
+use SharedKernel\Domain\Repository\OutboxRepositoryInterface;
 use Throwable;
 
 class TransactionalCommandDecorator implements CommandHandlerInterface
@@ -22,6 +23,8 @@ class TransactionalCommandDecorator implements CommandHandlerInterface
 
     private EventDispatcherInterface $eventDispatcher;
 
+    private OutboxRepositoryInterface $outbox;
+
     private EventBusInterface $eventBus;
 
     public function __construct(
@@ -29,12 +32,14 @@ class TransactionalCommandDecorator implements CommandHandlerInterface
         TransactionManagerInterface $transactionManager,
         EventManagerInterface $eventManager,
         EventDispatcherInterface $eventDispatcher,
+        OutboxRepositoryInterface $outbox,
         EventBusInterface $eventBus
     ) {
         $this->next = $next;
         $this->transactionManager = $transactionManager;
         $this->eventManager = $eventManager;
         $this->eventDispatcher = $eventDispatcher;
+        $this->outbox = $outbox;
         $this->eventBus = $eventBus;
     }
 
@@ -47,12 +52,14 @@ class TransactionalCommandDecorator implements CommandHandlerInterface
 
         try {
             $this->next->handle($command);
-            $this->eventDispatcher->dispatchAll($this->eventManager->pullSynchronousEvents());
-            $this->eventBus->publishAll($this->eventManager->pullAsynchronousEvents());
+            $this->eventDispatcher->dispatch(...$this->eventManager->pullTransactionalEvents());
+            $this->outbox->save(...$this->eventManager->pullOutboxEvents());
             $this->transactionManager->commit();
         } catch (Throwable $e) {
             $this->transactionManager->rollback();
             throw $e;
         }
+
+        $this->eventBus->publish(...$this->eventManager->pullPostCommitEvents());
     }
 }
