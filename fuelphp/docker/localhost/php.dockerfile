@@ -39,4 +39,4 @@ RUN echo "xdebug.output_dir=/app/storage/xdebug" >> "$PHP_INI_DIR/conf.d/docker-
 RUN echo -e "#!/bin/sh\nphp-fpm" > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 CMD ["/usr/local/bin/start.sh"]
 
-WORKDIR /app/fuelphp
+WORKDIR /app
