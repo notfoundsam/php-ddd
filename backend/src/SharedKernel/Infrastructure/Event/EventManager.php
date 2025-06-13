@@ -5,22 +5,28 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\Event;
 
 use SharedKernel\Domain\Aggregate\AggregateRoot;
-use SharedKernel\Domain\Event\AsynchronousEventInterface;
+use SharedKernel\Domain\Event\OutboxEventInterface;
+use SharedKernel\Domain\Event\PostCommitEventInterface;
 use SharedKernel\Domain\Event\EventInterface;
 use SharedKernel\Domain\Event\EventManagerInterface;
-use SharedKernel\Domain\Event\SynchronousEventInterface;
+use SharedKernel\Domain\Event\TransactionalEventInterface;
 
 final class EventManager implements EventManagerInterface
 {
     /**
-     * @var array<EventInterface>
+     * @var iterable<EventInterface>
      */
-    private array $syncEvents = [];
+    private iterable $syncEvents = [];
 
     /**
-     * @var array<EventInterface>
+     * @var iterable<EventInterface>
      */
-    private array $asyncEvents = [];
+    private iterable $asyncEvents = [];
+
+    /**
+     * @var iterable<OutboxEventInterface>
+     */
+    private iterable $outboxEvents = [];
 
     public function collectFromAggregate(AggregateRoot $aggregate): void
     {
@@ -31,16 +37,18 @@ final class EventManager implements EventManagerInterface
 
     public function push(EventInterface $event): void
     {
-        if ($event instanceof SynchronousEventInterface) {
+        if ($event instanceof TransactionalEventInterface) {
             $this->syncEvents[] = $event;
-        } elseif ($event instanceof AsynchronousEventInterface) {
+        } elseif ($event instanceof PostCommitEventInterface) {
             $this->asyncEvents[] = $event;
+        } elseif ($event instanceof OutboxEventInterface) {
+            $this->outboxEvents[] = $event;
         } else {
             throw new \LogicException('Unclassified event: ' . get_class($event));
         }
     }
 
-    public function pullSynchronousEvents(): iterable
+    public function pullTransactionalEvents(): iterable
     {
         $events = $this->syncEvents;
         $this->syncEvents = [];
@@ -48,10 +56,18 @@ final class EventManager implements EventManagerInterface
         return $events;
     }
 
-    public function pullAsynchronousEvents(): iterable
+    public function pullPostCommitEvents(): iterable
     {
         $events = $this->asyncEvents;
         $this->asyncEvents = [];
+
+        return $events;
+    }
+
+    public function pullOutboxEvents(): iterable
+    {
+        $events = $this->outboxEvents;
+        $this->outboxEvents = [];
 
         return $events;
     }

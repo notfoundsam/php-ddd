@@ -15,10 +15,15 @@ interface EventManagerInterface
     /**
      * @return iterable<EventInterface>
      */
-    public function pullSynchronousEvents(): iterable;
+    public function pullTransactionalEvents(): iterable;
 
     /**
      * @return iterable<EventInterface>
      */
-    public function pullAsynchronousEvents(): iterable;
+    public function pullPostCommitEvents(): iterable;
+
+    /**
+     * @return iterable<OutboxEventInterface>
+     */
+    public function pullOutboxEvents(): iterable;
 }

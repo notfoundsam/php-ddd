@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\Event;
 
 use SharedKernel\Domain\Event\EventBusInterface;
-use SharedKernel\Domain\Event\EventInterface;
 use SharedKernel\Domain\Event\ListenerProviderInterface;
+use SharedKernel\Domain\Event\PostCommitEventInterface;
 
 final class InMemoryEventBus implements EventBusInterface
 {
@@ -17,17 +17,17 @@ final class InMemoryEventBus implements EventBusInterface
         $this->listenerProvider = $listenerProvider;
     }
 
-    public function publish(EventInterface $event): void
+    public function publish(PostCommitEventInterface ...$events): void
     {
-        foreach ($this->listenerProvider->getListenersForEvent($event) as $listener) {
-            $listener($event);
+        foreach ($events as $event) {
+            $this->publishEvent($event);
         }
     }
 
-    public function publishAll(iterable $events): void
+    public function publishEvent(PostCommitEventInterface $event): void
     {
-        foreach ($events as $event) {
-            $this->publish($event);
+        foreach ($this->listenerProvider->getListenersForEvent($event) as $listener) {
+            $listener($event);
         }
     }
 }

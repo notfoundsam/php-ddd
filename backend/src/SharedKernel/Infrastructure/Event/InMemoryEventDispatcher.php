@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\Event;
 
 use SharedKernel\Domain\Event\EventDispatcherInterface;
-use SharedKernel\Domain\Event\EventInterface;
 use SharedKernel\Domain\Event\ListenerProviderInterface;
+use SharedKernel\Domain\Event\TransactionalEventInterface;
 
 final class InMemoryEventDispatcher implements EventDispatcherInterface
 {
@@ -17,17 +17,17 @@ final class InMemoryEventDispatcher implements EventDispatcherInterface
         $this->listenerProvider = $listenerProvider;
     }
 
-    public function dispatch(EventInterface $event): void
+    public function dispatch(TransactionalEventInterface ...$events): void
     {
-        foreach ($this->listenerProvider->getListenersForEvent($event) as $listener) {
-            $listener($event);
+        foreach ($events as $event) {
+            $this->dispatchEvent($event);
         }
     }
 
-    public function dispatchAll(iterable $events): void
+    private function dispatchEvent(TransactionalEventInterface $event): void
     {
-        foreach ($events as $event) {
-            $this->dispatch($event);
+        foreach ($this->listenerProvider->getListenersForEvent($event) as $listener) {
+            $listener($event);
         }
     }
 }

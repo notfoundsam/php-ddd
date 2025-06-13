@@ -13,6 +13,4 @@ interface EventInterface
     public function getVersion(): int;
 
     public function occurredOn(): DateTimeImmutable;
-
-    public function serialize(): array;
 }

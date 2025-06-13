@@ -6,10 +6,5 @@ namespace SharedKernel\Domain\Event;
 
 interface EventBusInterface
 {
-    public function publish(EventInterface $event): void;
-
-    /**
-     * @param iterable<EventInterface> $events
-     */
-    public function publishAll(iterable $events): void;
+    public function publish(PostCommitEventInterface ...$events): void;
 }

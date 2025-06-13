@@ -6,7 +6,7 @@ namespace SharedKernel\Infrastructure\Event;
 
 use Aws\Sqs\SqsClient;
 use SharedKernel\Domain\Event\EventBusInterface;
-use SharedKernel\Domain\Event\EventInterface;
+use SharedKernel\Domain\Event\PostCommitEventInterface;
 
 final class AwsSqsEventBus implements EventBusInterface
 {
@@ -20,7 +20,14 @@ final class AwsSqsEventBus implements EventBusInterface
         $this->queueUrl = $queueUrl;
     }
 
-    public function publish(EventInterface $event): void
+    public function publish(PostCommitEventInterface ...$events): void
+    {
+        foreach ($events as $singleEvent) {
+            $this->publishEvent($singleEvent);
+        }
+    }
+
+    private function publishEvent(PostCommitEventInterface $event): void
     {
         $groupId = get_class($event);
 
@@ -36,12 +43,5 @@ final class AwsSqsEventBus implements EventBusInterface
             'MessageGroupId' => $groupId,
             'MessageDeduplicationId' => $event->getId(),
         ]);
-    }
-
-    public function publishAll(iterable $events): void
-    {
-        foreach ($events as $event) {
-            $this->publish($event);
-        }
     }
 }
