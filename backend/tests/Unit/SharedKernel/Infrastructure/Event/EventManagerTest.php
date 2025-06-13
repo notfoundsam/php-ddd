@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\SharedKernel\Infrastructure\Event;
 
+use LogicException;
 use PHPUnit\Framework\TestCase;
 use SharedKernel\Domain\Aggregate\AggregateRoot;
 use SharedKernel\Domain\Event\EventInterface;
@@ -32,7 +33,7 @@ class EventManagerTest extends TestCase
 
         // Assert
         $this->assertCount(1, $events);
-        $this->assertContains($event, $events);
+        $this->assertContainsEquals($event, $events);
         $this->assertEmpty($this->eventManager->pullTransactionalEvents());
     }
 
@@ -47,7 +48,7 @@ class EventManagerTest extends TestCase
 
         // Assert
         $this->assertCount(1, $events);
-        $this->assertContains($event, $events);
+        $this->assertContainsEquals($event, $events);
         $this->assertEmpty($this->eventManager->pullPostCommitEvents());
     }
 
@@ -62,7 +63,7 @@ class EventManagerTest extends TestCase
 
         // Assert
         $this->assertCount(1, $events);
-        $this->assertContains($event, $events);
+        $this->assertContainsEquals($event, $events);
         $this->assertEmpty($this->eventManager->pullOutboxEvents());
     }
 
@@ -72,7 +73,7 @@ class EventManagerTest extends TestCase
         $event = $this->createMock(EventInterface::class);
 
         // Assert
-        $this->expectException(\LogicException::class);
+        $this->expectException(LogicException::class);
         $this->expectExceptionMessageMatches('/^Unclassified event\:/');
 
         // Act
@@ -96,15 +97,15 @@ class EventManagerTest extends TestCase
         // Assert
         $transactionalEvents = $this->eventManager->pullTransactionalEvents();
         $this->assertCount(1, $transactionalEvents);
-        $this->assertContains($transactionalEvent, $transactionalEvents);
+        $this->assertContainsEquals($transactionalEvent, $transactionalEvents);
 
         $postCommitEvents = $this->eventManager->pullPostCommitEvents();
         $this->assertCount(1, $postCommitEvents);
-        $this->assertContains($postCommitEvent, $postCommitEvents);
+        $this->assertContainsEquals($postCommitEvent, $postCommitEvents);
 
         $outboxEvents = $this->eventManager->pullOutboxEvents();
         $this->assertCount(1, $outboxEvents);
-        $this->assertContains($outboxEvent, $outboxEvents);
+        $this->assertContainsEquals($outboxEvent, $outboxEvents);
     }
 
     public function testPullMethodsClearEvents(): void
@@ -143,7 +144,7 @@ class EventManagerTest extends TestCase
 
         // Assert
         $this->assertCount(2, $events);
-        $this->assertContains($transactionalEvent1, $events);
-        $this->assertContains($transactionalEvent2, $events);
+        $this->assertContainsEquals($transactionalEvent1, $events);
+        $this->assertContainsEquals($transactionalEvent2, $events);
     }
 }
