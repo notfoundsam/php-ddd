@@ -33,3 +33,9 @@ Fuel::$env = Arr::get($_SERVER, 'FUEL_ENV', Arr::get($_ENV, 'FUEL_ENV', getenv('
 
 // Initialize the framework with the config file.
 \Fuel::init('config.php');
+
+// Load PHP-DI container
+$container = require APPPATH . 'config/di.php';
+
+// Make the container accessible globally
+$GLOBALS['container'] = $container;

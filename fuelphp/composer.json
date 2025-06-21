@@ -22,7 +22,8 @@
     "fuel/orm": "1.8.*",
     "fuel/parser": "1.8.*",
     "fuelphp/upload": "2.0.6",
-    "aws/aws-sdk-php": "^3.337"
+    "aws/aws-sdk-php": "^3.337",
+    "php-di/php-di": "^6.4"
   },
   "autoload": {
     "psr-4": {
