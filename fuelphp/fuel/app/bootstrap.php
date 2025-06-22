@@ -11,11 +11,11 @@
  */
 
 // Bootstrap the framework - THIS LINE NEEDS TO BE FIRST!
-require COREPATH.'bootstrap.php';
+require COREPATH . 'bootstrap.php';
 
 // Add framework overload classes here
 \Autoloader::add_classes(array(
-	// Example: 'View' => APPPATH.'classes/myview.php',
+    'Log' => APPPATH . 'classes/log.php',
 ));
 
 // Register the autoloader

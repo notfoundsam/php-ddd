@@ -27,5 +27,5 @@ desktop.ini
 /fuel/packages/parser/
 
 # dynamically generated files
-/fuel/app/logs/*/*/*
+/fuel/app/logs/*
 /fuel/app/cache/*/*
