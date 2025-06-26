@@ -6,4 +6,5 @@ namespace SharedKernel\Domain\Notification;
 
 interface NotifierInterface
 {
+    public function notify(NotificationMessageInterface $message): DeliveryReceiptInterface;
 }
