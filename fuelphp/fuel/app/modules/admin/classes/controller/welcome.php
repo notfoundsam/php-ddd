@@ -2,11 +2,10 @@
 
 namespace Admin;
 
-use Fuel\Core\Controller;
 use Fuel\Core\Response;
 use Fuel\Core\View;
 
-class Controller_Welcome extends Controller
+class Controller_Welcome extends Controller_Abstract
 {
 	public function action_index()
 	{
