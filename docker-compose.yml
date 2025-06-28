@@ -29,7 +29,7 @@ services:
       context: ./fuelphp/docker/localhost
       dockerfile: nginx.dockerfile
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - ./fuelphp/docker/nginx.conf:/etc/nginx/nginx.conf
       - ./fuelphp/docker/localhost/nginx_default.conf:/etc/nginx/conf.d/default.conf
@@ -44,7 +44,7 @@ services:
       dockerfile: localhost/php.dockerfile
     environment:
       FUEL_ENV: development
-      APP_URL: http://localhost:8080/
+      APP_URL: http://php-ddd.test/
       PHP_MEMORY_LIMIT: 256M
       APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
       APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a

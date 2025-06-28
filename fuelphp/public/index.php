@@ -168,7 +168,10 @@ try
 	// Boot the app...
 	require APPPATH.'bootstrap.php';
 
-	// ... and execute the main request
+    // Routing logic for subdomains
+    require APPPATH . 'config/subdomain.php';
+
+    // ... and execute the main request
 	$response = $routerequest();
 }
 catch (HttpBadRequestException $e)
