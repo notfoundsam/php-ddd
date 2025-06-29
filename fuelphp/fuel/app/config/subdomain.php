@@ -3,11 +3,12 @@
 $host = $_SERVER['HTTP_HOST'] ?? '';
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
-// Do not allow access to the modules directory directly
-if (preg_match('/^admin/', ltrim($uri, '/'))) {
-    $_SERVER['REQUEST_URI'] = str_replace(['admin'], '_404_', $uri);
+// Restrict access to the modules directory directly
+if (preg_match('#^admin(/|$)#', ltrim($uri, '/'))) {
+    $_SERVER['REQUEST_URI'] = '/_404_';
 }
 
+// Route requests to the modules directory
 if (preg_match('/^admin\./', $host)) {
-    $_SERVER['REQUEST_URI'] = '/admin' . $_SERVER['REQUEST_URI'];
+    $_SERVER['REQUEST_URI'] = '/admin' . $uri;
 }
