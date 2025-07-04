@@ -6,4 +6,5 @@ namespace SharedKernel\Domain\Event;
 
 interface EventListenerInterface
 {
+    public function __invoke(EventInterface $event): void;
 }

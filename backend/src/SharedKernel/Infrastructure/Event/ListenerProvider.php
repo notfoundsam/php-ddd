@@ -23,8 +23,19 @@ final class ListenerProvider implements ListenerProviderInterface
 
     public function getListenersForEvent(EventInterface $event): iterable
     {
-        $eventType = get_class($event);
+        $listeners = [];
+        $eventClasses = array_merge(
+            class_parents($event) ?: [],
+            class_implements($event) ?: [],
+            [get_class($event)]
+        );
 
-        return $this->listeners[$eventType] ?? [];
+        foreach ($eventClasses as $eventClass) {
+            if (isset($this->listeners[$eventClass])) {
+                $listeners = array_merge($listeners, $this->listeners[$eventClass]);
+            }
+        }
+
+        return $listeners;
     }
 }
