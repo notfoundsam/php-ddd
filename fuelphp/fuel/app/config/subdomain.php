@@ -1,6 +1,6 @@
 <?php
 
-$host = $_SERVER['HTTP_HOST'] ?? '';
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '';
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
 // Restrict access to the modules directory directly
