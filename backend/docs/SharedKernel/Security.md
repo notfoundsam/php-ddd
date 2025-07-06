@@ -34,25 +34,23 @@ interface SecurityContextInterface
 - Provide thread-safe access to authenticated user
 - Integration point for different authentication providers
 
-### 2. Enhanced Authentication Service
+### 2. Authentication Service Interface
 
-**Current State**: Basic username/password authentication
-**Enhancement**: Support for multiple authentication providers
+**Purpose**: Provides framework-agnostic authentication contract for different bounded contexts.
 
-**Extended Interface**:
+**Interface**:
 ```php
 interface AuthenticationServiceInterface
 {
     public function authenticate(string $username, string $password): AuthenticatedUser;
-    public function authenticateByToken(string $token): AuthenticatedUser;
+    public function authenticateByToken(string $token): AuthenticatedUser;  // For token-based contexts (Cognito)
+    public function authenticateBySession(): AuthenticatedUser;             // For session-based contexts (FuelPHP)
     public function refresh(): bool;
     public function logout(): void;
 }
 ```
 
-**Provider Implementations**:
-- `CognitoAuthenticationService` - AWS Cognito integration for Admin context
-- `FuelPhpAuthenticationService` - FuelPHP session-based auth for Marketing context
+**Note**: Concrete implementations will be provided by individual bounded contexts (Admin, Marketing) to support their specific authentication mechanisms. Context-specific methods may throw `NotSupportedException` for unsupported authentication types.
 
 ### 3. Permission Management System
 
@@ -185,8 +183,17 @@ class InsufficientPermissionsException extends UnauthorizedException
 
 **Examples**:
 ```php
-// User with multiple roles
-$user = new AuthenticatedUser('123', 'john@example.com', ['user', 'manager', 'report.viewer']);
+// User with multiple roles and profile metadata
+$user = new AuthenticatedUser(
+    '123', 
+    'john@example.com', 
+    ['user', 'manager', 'report.viewer'],
+    [
+        'department' => 'Sales',
+        'employee_id' => 'EMP001',
+        'company' => 'Acme Corp'
+    ]
+);
 
 // Permission check - any role with permission grants access
 hasPermission($user, 'user.view'); // true (from 'user' role)
@@ -202,7 +209,7 @@ hasPermission($user, 'reports.generate'); // true (from 'report.viewer' role)
 
 ### Role Hierarchy (Individual Role Ranking)
 ```
-admin > manager > user > guest
+admin > manager > user
 ```
 
 **Note**: Hierarchy applies to individual roles for organizational purposes. Users with multiple roles get combined permissions regardless of hierarchy.
@@ -211,7 +218,6 @@ admin > manager > user > guest
 - `admin`: Full system access
 - `manager`: Business operations management
 - `user`: Standard user operations
-- `guest`: Public access only
 
 ### Permission Configuration
 ```php
@@ -221,7 +227,6 @@ return [
         'admin' => ['*'], // All permissions
         'manager' => ['user.view', 'user.create', 'order.*'],
         'user' => ['user.view.own', 'order.view.own'],
-        'guest' => [],
         // Specialized roles for multi-role scenarios
         'report.viewer' => ['reports.view', 'reports.generate'],
         'order.processor' => ['order.process', 'order.update'],
@@ -243,15 +248,30 @@ return [
 **Multi-Role User Examples**:
 ```php
 // Progressive permissions - user promoted to manager keeps user permissions
-$manager = new AuthenticatedUser('1', 'manager@example.com', ['user', 'manager']);
+$manager = new AuthenticatedUser(
+    '1', 
+    'manager@example.com', 
+    ['user', 'manager'],
+    ['department' => 'Operations', 'employee_id' => 'MGR001']
+);
 // Has: user.view.own, order.view.own, user.view, user.create, order.*
 
 // Specialized access - user with specific capabilities
-$specialist = new AuthenticatedUser('2', 'specialist@example.com', ['user', 'report.viewer', 'order.processor']);
+$specialist = new AuthenticatedUser(
+    '2', 
+    'specialist@example.com', 
+    ['user', 'report.viewer', 'order.processor'],
+    ['specialization' => 'Analytics', 'clearance_level' => 'L2']
+);
 // Has: user.view.own, order.view.own, reports.view, reports.generate, order.process, order.update
 
 // Cross-context access - admin in marketing, user in sales
-$crossContext = new AuthenticatedUser('3', 'cross@example.com', ['admin.marketing', 'user.sales']);
+$crossContext = new AuthenticatedUser(
+    '3', 
+    'cross@example.com', 
+    ['admin.marketing', 'user.sales'],
+    ['marketing_region' => 'North', 'sales_territory' => 'Enterprise']
+);
 // Has: marketing.*, sales.view, sales.create
 ```
 
@@ -267,55 +287,330 @@ SecurityCommandDecorator -> LoggerCommandDecorator -> TransactionalCommandDecora
 2. Log authorized commands
 3. Execute in transaction
 
-### DI Container Configuration
-```php
-// Example DI configuration
-$container->set(SecurityContextInterface::class, SecurityContext::class);
-$container->set(PermissionServiceInterface::class, ConfigPermissionService::class);
-
-// Context-specific authentication providers
-$container->set('admin.auth', CognitoAuthenticationService::class);
-$container->set('marketing.auth', FuelPhpAuthenticationService::class);
-```
 
 ## Bounded Context Integration
 
-### Admin Context (AWS Cognito)
-- **Authentication**: AWS Cognito JWT tokens
-- **User Storage**: `admin_users` table for profile data
-- **Permissions**: Role-based from Cognito groups
-- **Session Management**: JWT token validation
+### Core SharedKernel Components
+- **Security Context**: Manages authenticated user across all contexts
+- **Permission Service**: Unified permission checking logic
+- **Security Decorator**: Consistent command authorization
+- **Authentication Interface**: Common contract for all auth providers
 
-### Marketing Context (FuelPHP)
-- **Authentication**: FuelPHP session-based
-- **User Storage**: Existing FuelPHP user tables
-- **Permissions**: Role-based from database
-- **Session Management**: FuelPHP session handling
+### Context-Specific Responsibilities
+- **Authentication Implementation**: Each bounded context implements `AuthenticationServiceInterface` with appropriate methods
+- **User Storage**: Context-specific user profile management
+- **Permission Configuration**: Context-specific role and permission mappings
+- **Session/Token Management**: Context-appropriate authentication state handling (sessions for FuelPHP, tokens for Cognito)
 
-### Shared Security Context
-- Common `AuthenticatedUser` value object
-- Unified permission checking
-- Consistent security decorator behavior
+### Integration Points
+- Common `AuthenticatedUser` value object with profile metadata
+- Unified permission checking through SharedKernel
+- Consistent security decorator behavior across contexts
+- Context-specific profile wrapper classes for type-safe profile access
 
-## Implementation Phases
+## AuthenticatedUser Design
 
-### Phase 1: Core Infrastructure
-1. Create security interfaces and base implementations
-2. Implement `SecurityCommandDecorator`
-3. Create permission service with configuration support
-4. Add security context management
+### Core AuthenticatedUser Class
 
-### Phase 2: Authentication Providers
-1. Implement AWS Cognito provider for Admin context
-2. Implement FuelPHP provider for Marketing context
-3. Create user profile management
-4. Add token validation and refresh
+**Purpose**: Represents an authenticated user with core identity information and flexible profile metadata.
 
-### Phase 3: Integration & Testing
-1. Wire up security decorator in DI container
-2. Configure permission mappings
-3. Add security to existing commands
-4. Create comprehensive test coverage
+**Class Definition**:
+```php
+class AuthenticatedUser
+{
+    public function __construct(
+        private string $id,
+        private string $email,
+        private array $roles,
+        private array $profileMetadata = []
+    ) {}
+    
+    // Core identity methods
+    public function getId(): string { return $this->id; }
+    public function getEmail(): string { return $this->email; }
+    public function getRoles(): array { return $this->roles; }
+    
+    // Profile metadata methods
+    public function getProfileMetadata(): array { return $this->profileMetadata; }
+    public function getProfileValue(string $key): mixed { return $this->profileMetadata[$key] ?? null; }
+    public function hasProfileValue(string $key): bool { return isset($this->profileMetadata[$key]); }
+    
+    // Convenience methods
+    public function hasRole(string $role): bool { return in_array($role, $this->roles); }
+    public function equals(AuthenticatedUser $other): bool { return $this->id === $other->getId(); }
+}
+```
+
+### Context-Specific Profile Wrappers
+
+**Purpose**: Provide type-safe, context-specific access to profile metadata.
+
+#### Admin Context Profile Wrapper
+```php
+class AdminUserProfile
+{
+    public function __construct(private AuthenticatedUser $user) {}
+    
+    public function getUser(): AuthenticatedUser { return $this->user; }
+    
+    public function getDepartment(): ?string 
+    { 
+        return $this->user->getProfileValue('department'); 
+    }
+    
+    public function getEmployeeId(): ?string 
+    { 
+        return $this->user->getProfileValue('employee_id'); 
+    }
+    
+    public function getAccessLevel(): string 
+    { 
+        return $this->user->getProfileValue('access_level') ?? 'basic'; 
+    }
+    
+    public function getLastLogin(): ?DateTime 
+    { 
+        $timestamp = $this->user->getProfileValue('last_login');
+        return $timestamp ? new DateTime($timestamp) : null;
+    }
+}
+```
+
+#### Marketing Context Profile Wrapper
+```php
+class MarketingUserProfile
+{
+    public function __construct(private AuthenticatedUser $user) {}
+    
+    public function getUser(): AuthenticatedUser { return $this->user; }
+    
+    public function getCompany(): ?string 
+    { 
+        return $this->user->getProfileValue('company'); 
+    }
+    
+    public function getLeadSource(): ?string 
+    { 
+        return $this->user->getProfileValue('lead_source'); 
+    }
+    
+    public function getSubscriptionStatus(): string 
+    { 
+        return $this->user->getProfileValue('subscription_status') ?? 'inactive'; 
+    }
+    
+    public function getCampaignPreferences(): array 
+    { 
+        return $this->user->getProfileValue('campaign_preferences') ?? []; 
+    }
+}
+```
+
+### Authentication Service Integration
+
+**Example**: How authentication services populate profile metadata
+
+#### Admin Context Authentication
+```php
+class CognitoAuthenticationService implements AuthenticationServiceInterface
+{
+    public function __construct(
+        private CognitoClient $cognitoClient,
+        private UserProfileRepositoryInterface $profileRepository
+    ) {}
+    
+    public function authenticate(string $username, string $password): AuthenticatedUser
+    {
+        // 1. Authenticate with Cognito (clean - only auth concern)
+        $cognitoUser = $this->cognitoClient->authenticate($username, $password);
+        
+        // 2. Get profile metadata and roles from database
+        $profile = $this->profileRepository->findByCognitoId($cognitoUser->getId());
+        
+        // 3. Combine into AuthenticatedUser
+        return new AuthenticatedUser(
+            $cognitoUser->getId(),           // Use Cognito ID as primary
+            $cognitoUser->getEmail(),        // Email from Cognito
+            $profile ? $profile->getRoles() : [], // Roles from database
+            $profile ? $profile->getMetadata() : [] // Profile from database
+        );
+    }
+    
+    public function authenticateByToken(string $token): AuthenticatedUser
+    {
+        // 1. Validate JWT with Cognito
+        $claims = $this->cognitoClient->validateJwtToken($token);
+        
+        // 2. Get profile and roles from database
+        $profile = $this->profileRepository->findByCognitoId($claims['sub']);
+        
+        // 3. Combine
+        return new AuthenticatedUser(
+            $claims['sub'],                  // Cognito ID
+            $claims['email'],                // Email from token
+            $profile ? $profile->getRoles() : [], // Roles from database
+            $profile ? $profile->getMetadata() : [] // Profile from database
+        );
+    }
+}
+```
+
+#### Marketing Context Authentication
+```php
+class FuelPhpAuthenticationService implements AuthenticationServiceInterface
+{
+    public function __construct(
+        private UserProfileRepositoryInterface $profileRepository
+    ) {}
+    
+    public function authenticate(string $username, string $password): AuthenticatedUser
+    {
+        // 1. Authenticate with FuelPHP (clean - only auth concern)
+        if (Auth::login($username, $password)) {
+            $fuelUser = Auth::user();
+            
+            // 2. Get profile metadata and roles from database
+            $profile = $this->profileRepository->findByFuelPhpId($fuelUser->id);
+            
+            // 3. Combine into AuthenticatedUser
+            return new AuthenticatedUser(
+                (string) $fuelUser->id,          // Use FuelPHP ID as primary
+                $fuelUser->email,                // Email from FuelPHP
+                $profile ? $profile->getRoles() : [], // Roles from database
+                $profile ? $profile->getMetadata() : [] // Profile from database
+            );
+        }
+        
+        throw new AuthenticationException('Invalid credentials');
+    }
+    
+    public function authenticateByToken(string $token): AuthenticatedUser
+    {
+        // FuelPHP doesn't support token-based authentication
+        throw new NotSupportedException('Token authentication not supported in FuelPHP context');
+    }
+    
+    public function authenticateBySession(): AuthenticatedUser
+    {
+        // 1. Check FuelPHP session authentication
+        if (Auth::check()) {
+            $fuelUser = Auth::user();
+            
+            // 2. Get profile and roles from database
+            $profile = $this->profileRepository->findByFuelPhpId($fuelUser->id);
+            
+            // 3. Combine
+            return new AuthenticatedUser(
+                (string) $fuelUser->id,          // FuelPHP ID
+                $fuelUser->email,                // Email from FuelPHP
+                $profile ? $profile->getRoles() : [], // Roles from database
+                $profile ? $profile->getMetadata() : [] // Profile from database
+            );
+        }
+        
+        throw new UnauthenticatedException('No active FuelPHP session');
+    }
+}
+```
+
+### Usage Examples
+
+#### In Admin Context Services
+```php
+class AdminUserService
+{
+    private SecurityContextInterface $securityContext;
+    
+    public function getCurrentUserDepartment(): ?string
+    {
+        $user = $this->securityContext->getCurrentUser();
+        if (!$user) {
+            return null;
+        }
+        
+        $adminProfile = new AdminUserProfile($user);
+        return $adminProfile->getDepartment();
+    }
+}
+```
+
+#### In Marketing Context Services
+```php
+class MarketingCampaignService
+{
+    private SecurityContextInterface $securityContext;
+    
+    public function getUserCampaignPreferences(): array
+    {
+        $user = $this->securityContext->getCurrentUser();
+        if (!$user) {
+            return [];
+        }
+        
+        $marketingProfile = new MarketingUserProfile($user);
+        return $marketingProfile->getCampaignPreferences();
+    }
+}
+```
+
+### Database Design
+
+#### User Profile Tables
+```sql
+-- Admin context user profiles (Cognito-based)
+CREATE TABLE admin_user_profiles (
+    cognito_id VARCHAR(36) PRIMARY KEY,  -- Cognito user ID
+    roles JSON,                          -- Roles stored in database
+    metadata JSON,                       -- Profile metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Marketing context user profiles (FuelPHP-based)
+CREATE TABLE marketing_user_profiles (
+    fuelphp_id INTEGER PRIMARY KEY,      -- FuelPHP user ID
+    roles JSON,                          -- Roles stored in database
+    metadata JSON,                       -- Profile metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### Benefits of Database-First Approach
+
+1. **SharedKernel Purity**: Core user class remains context-agnostic
+2. **Type Safety**: Wrapper classes provide typed access to profile data
+3. **Flexibility**: Easy to add new profile fields without changing core classes
+4. **Clean Separation**: Authentication providers handle auth only, database handles business data
+5. **Testability**: Simple to mock profile repository separately from auth providers
+6. **Maintainability**: Profile and role changes don't affect authentication logic
+7. **Single Source of Truth**: All business data (roles + profile) in database
+
+## Implementation Scope
+
+### Core Security Infrastructure
+1. **Security Interfaces**: Define contracts for security context, permissions, and authentication
+2. **AuthenticatedUser Class**: Implement user identity with profile metadata support
+3. **Security Command Decorator**: Implement authorization logic for command execution
+4. **Permission Service**: Create configuration-based permission management
+5. **Security Context**: Manage authenticated user throughout request lifecycle
+6. **Security Exceptions**: Define domain-specific security exceptions
+7. **DI Container Integration**: Wire up security components in dependency injection
+
+### Out of Scope
+- **Authentication Provider Implementations**: Specific authentication mechanisms (AWS Cognito, FuelPHP) will be implemented by individual bounded contexts
+- **Context-Specific Profile Wrappers**: Profile wrapper classes will be implemented by individual bounded contexts
+- **User Profile Repository Implementations**: Context-specific user profile storage and management
+- **Token Validation**: Provider-specific token handling and validation
+- **Session Management**: Context-appropriate session handling mechanisms
+- **Profile Management Commands**: Context-specific profile creation and update commands
+
+### Testing Strategy
+1. **Unit Testing**: Test security components in isolation with mocked dependencies
+2. **Integration Testing**: Test security decorator with command handlers
+3. **Permission Testing**: Validate permission resolution logic and multi-role scenarios
+4. **Profile Metadata Testing**: Test AuthenticatedUser profile metadata functionality
+5. **Security Testing**: Test authorization bypass prevention and access control
 
 ## Security Considerations
 
@@ -341,9 +636,8 @@ $container->set('marketing.auth', FuelPhpAuthenticationService::class);
 
 ### Integration Testing
 - Test security decorator with real command handlers
-- Validate authentication provider integration
 - Test permission service with actual configurations
-- End-to-end security flow testing
+- End-to-end security flow testing with mock authentication
 
 ### Security Testing
 - Test authorization bypass attempts
