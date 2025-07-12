@@ -106,7 +106,7 @@ public function getAllPermissionsForUser(AuthenticatedUser $user): array
 
 #### Configuration-Based Command Security
 
-**Security Configuration Structure**:
+**CQRS Security Configuration Structure**:
 ```php
 // config/security.php
 return [
@@ -123,14 +123,36 @@ return [
             'permission' => 'user.delete',
             'roles' => ['admin']
         ],
-        'ViewOrderCommand' => [
+        'ProcessOrderCommand' => [
+            'permission' => 'order.process',
+            'roles' => ['admin', 'manager']
+        ]
+    ],
+    'query_permissions' => [
+        'GetUserQuery' => [
+            'permission' => 'user.view',
+            'roles' => ['admin', 'manager', 'user']
+        ],
+        'GetUserListQuery' => [
+            'permission' => 'user.list',
+            'roles' => ['admin', 'manager']
+        ],
+        'GetOrderQuery' => [
             'permission' => 'order.view',
             'roles' => ['admin', 'manager', 'user']
+        ],
+        'GetSensitiveReportQuery' => [
+            'permission' => 'reports.sensitive',
+            'roles' => ['admin']
         ]
     ],
     'public_commands' => [
         'HealthCheckCommand',
         'PublicApiCommand'
+    ],
+    'public_queries' => [
+        'HealthCheckQuery',
+        'PublicStatsQuery'
     ]
 ];
 ```
@@ -139,36 +161,183 @@ return [
 ```php
 class SecurityCommandDecorator implements CommandHandlerInterface
 {
+    use SecurityValidationTrait;
+    
     public function __construct(
         private CommandHandlerInterface $next,
         private SecurityContextInterface $securityContext,
         private PermissionServiceInterface $permissionService,
-        private array $commandPermissions,
-        private array $publicCommands
+        private SecurityAuditLoggerInterface $auditLogger,
+        private SecurityConfigInterface $securityConfig
     ) {}
     
     public function handle(CommandInterface $command): void
     {
         $commandName = get_class($command);
         
-        // 1. Check if command is public (no authorization required)
-        if (in_array($commandName, $this->publicCommands)) {
+        try {
+            // Use shared security validation logic
+            $publicCommands = $this->securityConfig->getPublicCommands();
+            $this->validateSecurity($commandName, 'command', $publicCommands);
+            
+            // Execute command if authorized
             $this->next->handle($command);
-            return;
+            
+        } catch (SecurityException $e) {
+            // Log security failures
+            $user = $this->securityContext->getCurrentUser();
+            $this->auditLogger->logOperation(
+                $user?->getId() ?? 'anonymous',
+                $commandName,
+                false,
+                'command',
+                ['error' => get_class($e), 'message' => $e->getMessage()]
+            );
+            
+            throw $e;
+        }
+    }
+}
+```
+
+**Authorization Flow**:
+1. Get command class name for security validation
+2. Use shared SecurityValidationTrait logic:
+   - Check if command is public (skip security if true)
+   - Get current authenticated user
+   - Look up command security configuration
+   - Validate required permissions and roles
+3. Execute command if authorized
+4. Log security events (success/failure) for audit trail
+
+**Benefits of Configuration-Based Approach**:
+- **Security by Default**: Commands without configuration are denied
+- **Centralized Control**: All command security rules in one place
+- **No Code Changes**: Security changes don't require command modifications
+- **Audit Friendly**: Easy to review all security configurations
+- **Testable**: Configuration can be easily mocked for testing
+
+### 5. Query Security Integration
+
+**Purpose**: Secure query execution through decorator pattern using the same configuration-based authorization approach as commands, completing the CQRS security coverage.
+
+#### QueryHandlerInterface Pattern
+
+**Query Handler Interface**:
+```php
+interface QueryHandlerInterface
+{
+    public function handle(QueryInterface $query): mixed;
+}
+```
+
+**Key Differences from Commands**:
+- **Returns Data**: Queries return results unlike commands which return void
+- **Read Operations**: Focus on data access permissions rather than action permissions
+- **High Frequency**: Queries are typically more frequent, requiring efficient permission checks
+- **Data Filtering**: May require filtering sensitive data based on user permissions
+
+#### SecurityQueryDecorator Implementation
+
+**Key Differences from Command Decorator**:
+- **Returns Data**: `handle()` method returns `mixed` instead of `void`
+- **Uses Query Types**: `QueryHandlerInterface` and `QueryInterface`
+- **Optional Data Filtering**: Can filter sensitive data from results
+- **Public Operations**: Uses `getPublicQueries()` instead of `getPublicCommands()`
+
+```php
+class SecurityQueryDecorator implements QueryHandlerInterface
+{
+    use SecurityValidationTrait;
+    
+    // Constructor identical to SecurityCommandDecorator
+    
+    public function handle(QueryInterface $query): mixed
+    {
+        $queryName = get_class($query);
+        
+        try {
+            $publicQueries = $this->securityConfig->getPublicQueries();
+            $this->validateSecurity($queryName, 'query', $publicQueries);
+            
+            $result = $this->next->handle($query);
+            
+            // Optional: Filter sensitive data based on user permissions  
+            return $this->filterSensitiveData($result, $queryName);
+            
+        } catch (SecurityException $e) {
+            // Same exception handling as command decorator
+            throw $e;
+        }
+    }
+    
+    private function filterSensitiveData(mixed $result, string $queryName): mixed
+    {
+        // Optional data-level filtering based on user permissions
+        return $result;
+    }
+}
+```
+
+#### Query Security Configuration
+
+**Query Permissions Structure**:
+```php
+// config/security.php
+return [
+    'query_permissions' => [
+        'GetUserQuery' => [
+            'permission' => 'user.view',
+            'roles' => ['admin', 'manager', 'user']
+        ],
+        'GetSensitiveReportQuery' => [
+            'permission' => 'reports.sensitive',
+            'roles' => ['admin']
+        ],
+        'GetOrderQuery' => [
+            'permission' => 'order.view',
+            'roles' => ['admin', 'manager', 'user']
+        ],
+        'GetUserListQuery' => [
+            'permission' => 'user.list',
+            'roles' => ['admin', 'manager']
+        ]
+    ],
+    'public_queries' => [
+        'HealthCheckQuery',
+        'PublicStatsQuery'
+    ]
+];
+```
+
+#### SecurityValidationTrait for Shared Logic
+
+**Purpose**: Eliminate code duplication between SecurityCommandDecorator and SecurityQueryDecorator by sharing common security validation logic through a trait.
+
+```php
+trait SecurityValidationTrait
+{
+    protected function validateSecurity(string $operationName, string $operationType, array $publicOperations = []): void
+    {
+        // 1. Check if operation is public (no authorization required)
+        if (in_array($operationName, $publicOperations)) {
+            return; // Public operations skip all security checks
         }
         
-        // 2. Get current authenticated user
+        // 2. Get current authenticated user (only for non-public operations)
         $user = $this->securityContext->getCurrentUser();
         if (!$user) {
             throw new UnauthenticatedException('Authentication required');
         }
         
-        // 3. Check command authorization configuration
-        if (!isset($this->commandPermissions[$commandName])) {
-            throw new SecurityConfigurationException("No security configuration found for command: {$commandName}");
-        }
+        // 3. Get operation security configuration
+        $config = $this->getOperationConfig($operationName, $operationType);
         
-        $config = $this->commandPermissions[$commandName];
+        if (!$config) {
+            throw new SecurityConfigurationException(
+                "No security configuration found for {$operationType}: {$operationName}"
+            );
+        }
         
         // 4. Validate permission if specified
         if (isset($config['permission'])) {
@@ -191,102 +360,74 @@ class SecurityCommandDecorator implements CommandHandlerInterface
             }
         }
         
-        // 6. Execute command if authorized
-        $this->next->handle($command);
+        // 6. Log successful authorization
+        $this->auditLogger->logOperation(
+            $user->getId(),
+            $operationName,
+            true,
+            $operationType
+        );
+    }
+    
+    private function getOperationConfig(string $operationName, string $operationType): ?array
+    {
+        if ($operationType === 'command') {
+            return $this->commandPermissions[$operationName] ?? null;
+        } else {
+            return $this->queryPermissions[$operationName] ?? null;
+        }
     }
 }
 ```
 
-**Authorization Flow**:
-1. Get command class name for configuration lookup
-2. Check if command is in public commands whitelist
-3. Get current authenticated user from security context
-4. Look up command security configuration
-5. Validate required permission if configured
-6. Validate required roles if configured  
-7. Execute command if authorized, throw exception if not
+**Configuration Service Interface**:
 
-**Benefits of Configuration-Based Approach**:
-- **Security by Default**: Commands without configuration are denied
-- **Centralized Control**: All command security rules in one place
-- **No Code Changes**: Security changes don't require command modifications
-- **Audit Friendly**: Easy to review all security configurations
-- **Testable**: Configuration can be easily mocked for testing
-
-### 5. Exception Handling
-
-**Security Exceptions**:
 ```php
-// Base authentication exception
-class AuthenticationException extends DomainException
+interface SecurityConfigInterface 
 {
-    public function __construct(string $message = 'Authentication failed', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
+    public function getCommandPermissions(): array;
+    public function getQueryPermissions(): array;
+    public function getPublicCommands(): array;
+    public function getPublicQueries(): array;
+    public function isPublicOperation(string $operationName, string $operationType): bool;
+    public function getOperationConfig(string $operationName, string $operationType): ?array;
 }
+```
 
-// Base authorization exception
-class UnauthorizedException extends DomainException
-{
-    public function __construct(string $message = 'Access denied', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
-}
+**Shared Implementation Pattern**:
+Both SecurityCommandDecorator and SecurityQueryDecorator follow the same pattern:
+1. Use `SecurityValidationTrait` for shared validation logic
+2. Inject `SecurityConfigInterface` for configuration access
+3. Call `validateSecurity(operationName, operationType, publicOperations)`
+4. Handle exceptions and audit logging consistently
+5. **Only difference**: Commands return `void`, queries return `mixed`
 
-// No authenticated user in security context
-class UnauthenticatedException extends AuthenticationException
-{
-    public function __construct(string $message = 'No authenticated user', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
-}
+**Benefits of Trait Approach**:
+- **DRY Principle**: Eliminates code duplication between command and query decorators
+- **Consistency**: Ensures identical security validation logic for both operations
+- **Maintainability**: Security logic changes in one place
+- **Flexibility**: Allows decorators to extend different base classes if needed
+- **Testability**: Shared logic can be tested independently
 
-// Specific permission missing
+### 6. Exception Handling
+
+**Security Exception Hierarchy**:
+```php
+// Base exceptions
+abstract class AuthenticationException extends DomainException {}
+abstract class UnauthorizedException extends DomainException {}
+class SecurityConfigurationException extends DomainException {}
+
+// Authentication-specific exceptions
+class UnauthenticatedException extends AuthenticationException {}
+class InvalidTokenException extends AuthenticationException {}
+class NotSupportedException extends AuthenticationException {}
+
+// Authorization-specific exceptions  
 class InsufficientPermissionsException extends UnauthorizedException
 {
-    private string $requiredPermission;
-    
-    public function __construct(string $permission, string $message = null, int $code = 0, ?Throwable $previous = null)
-    {
-        $this->requiredPermission = $permission;
-        $message = $message ?? "Access denied. Required permission: {$permission}";
-        parent::__construct($message, $code, $previous);
-    }
-    
-    public function getRequiredPermission(): string
-    {
-        return $this->requiredPermission;
-    }
-}
-
-// Authentication provider not supported
-class NotSupportedException extends AuthenticationException
-{
-    public function __construct(string $message = 'Authentication method not supported', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
-}
-
-// Token validation failure
-class InvalidTokenException extends AuthenticationException
-{
-    public function __construct(string $message = 'Invalid or expired token', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
-}
-
-// Security configuration error
-class SecurityConfigurationException extends DomainException
-{
-    public function __construct(string $message = 'Security configuration error', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
+    public function __construct(private string $requiredPermission, string $message = null) {}
+    public function getRequiredPermission(): string { return $this->requiredPermission; }
 }
 ```
 
@@ -302,19 +443,15 @@ DomainException
 └── SecurityConfigurationException
 ```
 
-**Usage Guidelines**:
-- `AuthenticationException`: Generic authentication failures (invalid credentials, user not found)
-- `UnauthenticatedException`: No authenticated user in security context
-- `UnauthorizedException`: User lacks required permissions or roles
-- `InsufficientPermissionsException`: Specific permission missing (includes permission name)
-- `InvalidTokenException`: Token validation failures (expired, malformed, invalid signature)
-- `NotSupportedException`: Authentication method not available in current context
-- `SecurityConfigurationException`: Missing or invalid security configuration
+**Exception Usage**:
+- **AuthenticationException**: Invalid credentials, user not found, token failures
+- **UnauthorizedException**: Insufficient permissions or roles  
+- **SecurityConfigurationException**: Missing or invalid security configuration
 
-**Security Considerations**:
-- Use generic error messages to prevent user enumeration attacks
-- Log detailed error information server-side while returning generic messages to clients
-- Include audit trail information for security exceptions
+**Security Principles**:
+- Use generic client-facing error messages to prevent information leakage
+- Log detailed server-side information for audit and debugging
+- All security exceptions trigger audit logging
 
 ### Standardized Error Messages
 
@@ -1502,14 +1639,24 @@ $customerWithSupport = new AuthenticatedUser(
 ## Integration with Existing Architecture
 
 ### Decorator Chain Order
+
+#### Command Flow
 ```
 SecurityCommandDecorator -> LoggerCommandDecorator -> TransactionalCommandDecorator -> ActualCommandHandler
 ```
 
+#### Query Flow  
+```
+SecurityQueryDecorator -> LoggerQueryDecorator -> CacheQueryDecorator -> ActualQueryHandler
+```
+
 **Rationale**:
-1. Security check first (fail fast)
-2. Log authorized commands
-3. Execute in transaction
+1. **Security check first (fail fast)**: Deny unauthorized access immediately
+2. **Log authorized operations**: Audit successful security validations
+3. **Commands**: Execute in transaction for data consistency
+4. **Queries**: Apply caching for performance (reads don't need transactions)
+
+**Security Consistency**: Both command and query flows start with security validation using the shared `SecurityValidationTrait`, ensuring consistent authorization logic across the entire CQRS implementation.
 
 
 ## Mock Authentication for Development
@@ -1987,17 +2134,20 @@ CREATE TABLE customer_users (
 1. **Security Interfaces**: Define contracts for security context, permissions, and authentication
 2. **AuthenticatedUser Class**: Implement user identity with profile metadata support
 3. **Security Command Decorator**: Implement configuration-based authorization logic for command execution
-4. **Permission Service**: Create configuration-based permission management
-5. **Security Context**: Manage authenticated user throughout request lifecycle
-6. **Security Exceptions**: Define comprehensive domain-specific security exceptions
-7. **Security Audit Logger**: Implement structured logging for all security events
-8. **FileBasedMockAuthenticationService**: Development authentication service with hashed password storage
-9. **Command Security Configuration**: Centralized security rules for command authorization
-10. **Session Management**: Context-specific session handling (token-based for Admin, session-based for CustomerPortal)
-11. **Token Refresh Services**: Secure token refresh mechanisms for all authentication contexts
-12. **Standardized Error Handling**: Generic client-facing errors with detailed server-side logging
-13. **Security Error Handler**: Centralized error message standardization and audit logging
-14. **DI Container Integration**: Wire up security components in dependency injection
+4. **Security Query Decorator**: Implement configuration-based authorization logic for query execution
+5. **SecurityValidationTrait**: Shared security validation logic for both command and query decorators
+6. **SecurityConfigInterface**: Centralized configuration service for all security rules and settings
+7. **Permission Service**: Create configuration-based permission management
+8. **Security Context**: Manage authenticated user throughout request lifecycle
+9. **Security Exceptions**: Define comprehensive domain-specific security exceptions
+10. **Security Audit Logger**: Implement structured logging for all security events
+11. **FileBasedMockAuthenticationService**: Development authentication service with hashed password storage
+12. **CQRS Security Configuration**: Centralized security rules for both command and query authorization
+13. **Session Management**: Context-specific session handling (token-based for Admin, session-based for CustomerPortal)
+14. **Token Refresh Services**: Secure token refresh mechanisms for all authentication contexts
+15. **Standardized Error Handling**: Generic client-facing errors with detailed server-side logging
+16. **Security Error Handler**: Centralized error message standardization and audit logging
+17. **DI Container Integration**: Wire up security components in dependency injection
 
 ### Out of Scope
 - **Authentication Provider Implementations**: Specific authentication mechanisms (AWS Cognito for Admin, FuelPHP for CustomerPortal) will be implemented by individual bounded contexts
