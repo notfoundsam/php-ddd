@@ -109,50 +109,134 @@ public function getAllPermissionsForUser(AuthenticatedUser $user): array
 **CQRS Security Configuration Structure**:
 ```php
 // config/security.php
+use Admin\Application\Command\CreateUserCommand;
+use Admin\Application\Command\UpdateUserCommand;
+use Admin\Application\Command\DeleteUserCommand;
+use Admin\Application\Command\ProcessOrderCommand;
+use Admin\Application\Query\GetUserQuery;
+use Admin\Application\Query\GetUserListQuery;
+use Admin\Application\Query\GetOrderQuery;
+use Admin\Application\Query\GetOrderDetailsQuery;
+use Admin\Application\Query\GetCustomerProfileQuery;
+use Admin\Application\Query\GetSensitiveReportQuery;
+use SharedKernel\Application\Command\HealthCheckCommand;
+use SharedKernel\Application\Command\PublicApiCommand;
+use SharedKernel\Application\Query\HealthCheckQuery;
+use SharedKernel\Application\Query\PublicStatsQuery;
+
 return [
     'command_permissions' => [
-        'CreateUserCommand' => [
+        CreateUserCommand::class => [
             'permission' => 'user.create',
             'roles' => ['admin', 'manager']
         ],
-        'UpdateUserCommand' => [
+        UpdateUserCommand::class => [
             'permission' => 'user.update', 
             'roles' => ['admin', 'manager']
         ],
-        'DeleteUserCommand' => [
+        DeleteUserCommand::class => [
             'permission' => 'user.delete',
             'roles' => ['admin']
         ],
-        'ProcessOrderCommand' => [
+        ProcessOrderCommand::class => [
             'permission' => 'order.process',
             'roles' => ['admin', 'manager']
         ]
     ],
     'query_permissions' => [
-        'GetUserQuery' => [
+        GetUserQuery::class => [
             'permission' => 'user.view',
             'roles' => ['admin', 'manager', 'user']
         ],
-        'GetUserListQuery' => [
+        GetUserListQuery::class => [
             'permission' => 'user.list',
             'roles' => ['admin', 'manager']
         ],
-        'GetOrderQuery' => [
+        GetOrderQuery::class => [
             'permission' => 'order.view',
             'roles' => ['admin', 'manager', 'user']
         ],
-        'GetSensitiveReportQuery' => [
+        GetSensitiveReportQuery::class => [
             'permission' => 'reports.sensitive',
             'roles' => ['admin']
+        ],
+        GetOrderDetailsQuery::class => [
+            'permission' => 'order.details.view',
+            'roles' => ['admin', 'manager', 'user']
+        ],
+        GetCustomerProfileQuery::class => [
+            'permission' => 'customer.profile.view',
+            'roles' => ['admin', 'manager']
         ]
     ],
     'public_commands' => [
-        'HealthCheckCommand',
-        'PublicApiCommand'
+        HealthCheckCommand::class,
+        PublicApiCommand::class
     ],
     'public_queries' => [
-        'HealthCheckQuery',
-        'PublicStatsQuery'
+        HealthCheckQuery::class,
+        PublicStatsQuery::class
+    ],
+    
+    // Data filtering configuration for sensitive field masking
+    'data_filtering' => [
+        'global_permissions' => [
+            'data.view.unfiltered' => ['admin'], // Users with this permission see all data
+        ],
+        'query_filters' => [
+            GetOrderDetailsQuery::class => [
+                'fields' => [
+                    'customer_email' => [
+                        'permission' => 'customer.email.view',
+                        'mask_value' => '***@***.com'
+                    ],
+                    'customer_phone' => [
+                        'permission' => 'customer.phone.view',
+                        'mask_value' => '***-***-****'
+                    ],
+                    'payment_info' => [
+                        'permission' => 'payment.details.view',
+                        'mask_value' => '[PAYMENT REDACTED]'
+                    ],
+                    'internal_notes' => [
+                        'permission' => 'internal.notes.view',
+                        'mask_value' => '[INTERNAL]'
+                    ]
+                ]
+            ],
+            GetUserListQuery::class => [
+                'fields' => [
+                    'email' => [
+                        'permission' => 'user.email.view',
+                        'mask_value' => '***@***.com'
+                    ],
+                    'phone' => [
+                        'permission' => 'user.phone.view',
+                        'mask_value' => '***-***-****'
+                    ],
+                    'address' => [
+                        'permission' => 'user.address.view',
+                        'mask_value' => '[ADDRESS HIDDEN]'
+                    ]
+                ]
+            ],
+            GetCustomerProfileQuery::class => [
+                'fields' => [
+                    'ssn' => [
+                        'permission' => 'customer.ssn.view',
+                        'mask_value' => '***-**-****'
+                    ],
+                    'credit_score' => [
+                        'permission' => 'customer.credit.view',
+                        'mask_value' => '[REDACTED]'
+                    ],
+                    'date_of_birth' => [
+                        'permission' => 'customer.dob.view',
+                        'mask_value' => '[DOB HIDDEN]'
+                    ]
+                ]
+            ]
+        ]
     ]
 ];
 ```
@@ -173,12 +257,10 @@ class SecurityCommandDecorator implements CommandHandlerInterface
     
     public function handle(CommandInterface $command): void
     {
-        $commandName = get_class($command);
-        
         try {
-            // Use shared security validation logic
+            // Use shared security validation logic with instanceof
             $publicCommands = $this->securityConfig->getPublicCommands();
-            $this->validateSecurity($commandName, 'command', $publicCommands);
+            $this->validateSecurity($command, $publicCommands);
             
             // Execute command if authorized
             $this->next->handle($command);
@@ -188,7 +270,7 @@ class SecurityCommandDecorator implements CommandHandlerInterface
             $user = $this->securityContext->getCurrentUser();
             $this->auditLogger->logOperation(
                 $user?->getId() ?? 'anonymous',
-                $commandName,
+                get_class($command),
                 false,
                 'command',
                 ['error' => get_class($e), 'message' => $e->getMessage()]
@@ -223,27 +305,116 @@ class SecurityCommandDecorator implements CommandHandlerInterface
 
 #### QueryHandlerInterface Pattern
 
+**Query Result Interface**:
+```php
+interface QueryResultInterface
+{
+    /**
+     * Get the underlying result data
+     * @return mixed
+     */
+    public function getData();
+}
+```
+
 **Query Handler Interface**:
 ```php
 interface QueryHandlerInterface
 {
-    public function handle(QueryInterface $query): mixed;
+    /**
+     * @param QueryInterface $query
+     * @return QueryResultInterface Structured query result
+     */
+    public function handle(QueryInterface $query): QueryResultInterface;
+}
+```
+
+**Concrete Result Examples**:
+```php
+// Complex domain result with business logic
+class OrderDetailsResult implements QueryResultInterface
+{
+    public function __construct(
+        private string $orderId,
+        private string $customerName,
+        private array $items,
+        private float $total
+    ) {}
+    
+    public function getData() { return $this; }
+    public function getOrderId(): string { return $this->orderId; }
+    public function getCustomerName(): string { return $this->customerName; }
+    public function getItems(): array { return $this->items; }
+    public function getTotal(): float { return $this->total; }
+    public function getFormattedTotal(): string { return '$' . number_format($this->total, 2); }
+}
+
+// Simple scalar result wrapper
+class ScalarResult implements QueryResultInterface
+{
+    public function __construct(private $data) {}
+    public function getData() { return $this->data; }
+}
+
+// Collection result wrapper
+class CollectionResult implements QueryResultInterface
+{
+    public function __construct(private array $items) {}
+    public function getData(): array { return $this->items; }
+    public function count(): int { return count($this->items); }
+    public function isEmpty(): bool { return empty($this->items); }
+}
+```
+
+**Usage in Query Handlers**:
+```php
+class GetOrderDetailsQueryHandler implements QueryHandlerInterface
+{
+    /**
+     * @return OrderDetailsResult
+     */
+    public function handle(QueryInterface $query): QueryResultInterface
+    {
+        // Fetch data from repository
+        $order = $this->repository->findById($query->getOrderId());
+        
+        return new OrderDetailsResult(
+            $order->getId(),
+            $order->getCustomerName(),
+            $order->getItems(),
+            $order->getTotal()
+        );
+    }
+}
+
+class GetOrderCountQueryHandler implements QueryHandlerInterface
+{
+    /**
+     * @return ScalarResult
+     */
+    public function handle(QueryInterface $query): QueryResultInterface
+    {
+        $count = $this->repository->countOrders();
+        return new ScalarResult($count);
+    }
 }
 ```
 
 **Key Differences from Commands**:
-- **Returns Data**: Queries return results unlike commands which return void
+- **Returns Structured Data**: Queries return `QueryResultInterface` implementations with type safety
 - **Read Operations**: Focus on data access permissions rather than action permissions
 - **High Frequency**: Queries are typically more frequent, requiring efficient permission checks
 - **Data Filtering**: May require filtering sensitive data based on user permissions
+- **Rich Domain Objects**: Result objects can contain computed properties and business logic
 
 #### SecurityQueryDecorator Implementation
 
 **Key Differences from Command Decorator**:
-- **Returns Data**: `handle()` method returns `mixed` instead of `void`
+- **Returns Structured Data**: `handle()` method returns `QueryResultInterface` instead of `void`
 - **Uses Query Types**: `QueryHandlerInterface` and `QueryInterface`
 - **Optional Data Filtering**: Can filter sensitive data from results
 - **Public Operations**: Uses `getPublicQueries()` instead of `getPublicCommands()`
+- **Type Safety**: Concrete result classes provide IDE support and refactoring safety
 
 ```php
 class SecurityQueryDecorator implements QueryHandlerInterface
@@ -252,18 +423,20 @@ class SecurityQueryDecorator implements QueryHandlerInterface
     
     // Constructor identical to SecurityCommandDecorator
     
-    public function handle(QueryInterface $query): mixed
+    /**
+     * @param QueryInterface $query
+     * @return QueryResultInterface
+     */
+    public function handle(QueryInterface $query): QueryResultInterface
     {
-        $queryName = get_class($query);
-        
         try {
             $publicQueries = $this->securityConfig->getPublicQueries();
-            $this->validateSecurity($queryName, 'query', $publicQueries);
+            $this->validateSecurity($query, $publicQueries);
             
             $result = $this->next->handle($query);
             
             // Optional: Filter sensitive data based on user permissions  
-            return $this->filterSensitiveData($result, $queryName);
+            return $this->filterSensitiveData($result, get_class($query));
             
         } catch (SecurityException $e) {
             // Same exception handling as command decorator
@@ -271,41 +444,225 @@ class SecurityQueryDecorator implements QueryHandlerInterface
         }
     }
     
-    private function filterSensitiveData(mixed $result, string $queryName): mixed
+    /**
+     * @param QueryResultInterface $result
+     * @param string $queryName
+     * @return QueryResultInterface
+     */
+    private function filterSensitiveData(QueryResultInterface $result, string $queryName): QueryResultInterface
     {
-        // Optional data-level filtering based on user permissions
+        $user = $this->securityContext->getCurrentUser();
+        
+        // Only apply filtering if user doesn't have full data access permissions
+        if (!$this->permissionService->hasPermission($user, 'data.view.unfiltered')) {
+            return new FilteredQueryResult($result, $user, $this->permissionService);
+        }
+        
         return $result;
     }
 }
 ```
+
+#### Sensitive Data Filtering with Decorator Pattern
+
+**Purpose**: Implement transparent data filtering that wraps query results without modifying original result classes.
+
+**FilteredQueryResult Implementation**:
+```php
+class FilteredQueryResult implements QueryResultInterface
+{
+    public function __construct(
+        private QueryResultInterface $originalResult,
+        private AuthenticatedUser $user,
+        private PermissionServiceInterface $permissionService
+    ) {}
+    
+    public function getData()
+    {
+        $data = $this->originalResult->getData();
+        return $this->applyDataFiltering($data);
+    }
+    
+    /**
+     * Apply permission-based data filtering
+     */
+    private function applyDataFiltering($data)
+    {
+        // Handle different data types
+        if (is_object($data)) {
+            return $this->filterObjectData($data);
+        } elseif (is_array($data)) {
+            return $this->filterArrayData($data);
+        }
+        
+        return $data; // Scalar values pass through unchanged
+    }
+    
+    private function filterObjectData($data)
+    {
+        // Example: Filter email addresses
+        if (method_exists($data, 'getCustomerEmail') && 
+            !$this->permissionService->hasPermission($this->user, 'customer.email.view')) {
+            // Create filtered copy or use reflection to mask sensitive data
+            return $this->maskSensitiveFields($data, ['customerEmail' => '***@***.com']);
+        }
+        
+        // Example: Filter payment information
+        if (method_exists($data, 'getPaymentInfo') && 
+            !$this->permissionService->hasPermission($this->user, 'payment.details.view')) {
+            return $this->maskSensitiveFields($data, ['paymentInfo' => '[REDACTED]']);
+        }
+        
+        return $data;
+    }
+    
+    private function filterArrayData(array $data): array
+    {
+        return array_map(function($item) {
+            return $this->applyDataFiltering($item);
+        }, $data);
+    }
+    
+    private function maskSensitiveFields($object, array $maskedFields)
+    {
+        // Implementation depends on your approach:
+        // 1. Create new instance with masked data
+        // 2. Use reflection to modify object properties
+        // 3. Return array representation with masked fields
+        
+        // Simple approach: convert to array and mask fields
+        $data = json_decode(json_encode($object), true);
+        foreach ($maskedFields as $field => $maskValue) {
+            if (isset($data[$field])) {
+                $data[$field] = $maskValue;
+            }
+        }
+        return $data;
+    }
+}
+```
+
+**Benefits of Decorator Approach**:
+- **Transparent**: Original result classes don't need filtering logic
+- **Composable**: Can stack multiple filtering decorators
+- **Flexible**: Works with any `QueryResultInterface` implementation
+- **Testable**: Filtering logic is isolated and easily testable
+- **Permission-Based**: Filtering decisions based on user permissions
+
+**Usage Examples**:
+```php
+// In controller - filtering is completely transparent
+/** @var OrderDetailsResult $result */
+$result = $this->queryBus->handle(new GetOrderDetailsQuery($orderId));
+
+// Result might be original or filtered based on user permissions
+$customerEmail = $result->getCustomerEmail(); // Could be real email or masked
+```
+
+**SecurityConfigInterface Extension**:
+```php
+interface SecurityConfigInterface 
+{
+    public function getCommandPermissions(): array;
+    public function getQueryPermissions(): array;
+    public function getPublicCommands(): array;
+    public function getPublicQueries(): array;
+    public function isPublicOperation(string $operationName, string $operationType): bool;
+    public function getOperationConfig(string $operationName, string $operationType): ?array;
+    
+    // Data filtering methods
+    public function getQueryFilterConfig(string $queryName): ?array;
+    public function getGlobalFilterPermissions(): array;
+    public function hasGlobalUnfilteredAccess(AuthenticatedUser $user): bool;
+}
+```
+
+**Updated SecurityQueryDecorator Integration**:
+```php
+class SecurityQueryDecorator implements QueryHandlerInterface
+{
+    private function filterSensitiveData(QueryResultInterface $result, string $queryName): QueryResultInterface
+    {
+        $user = $this->securityContext->getCurrentUser();
+        
+        // Check if user has global unfiltered data access
+        if ($this->permissionService->hasPermission($user, 'data.view.unfiltered')) {
+            return $result; // Admin sees everything
+        }
+        
+        // Get filtering configuration for this specific query
+        $filterConfig = $this->securityConfig->getQueryFilterConfig($queryName);
+        if (empty($filterConfig)) {
+            return $result; // No filtering configured for this query
+        }
+        
+        return new FilteredQueryResult($result, $user, $this->permissionService, $filterConfig);
+    }
+}
+```
+
+**FilteredQueryResult with Configuration**:
+```php
+class FilteredQueryResult implements QueryResultInterface
+{
+    public function __construct(
+        private QueryResultInterface $originalResult,
+        private AuthenticatedUser $user,
+        private PermissionServiceInterface $permissionService,
+        private array $filterConfig // Configuration for this specific query
+    ) {}
+    
+    private function filterObjectData($data)
+    {
+        $filteredData = $data;
+        
+        foreach ($this->filterConfig['fields'] as $fieldName => $fieldConfig) {
+            $permission = $fieldConfig['permission'];
+            $maskValue = $fieldConfig['mask_value'];
+            
+            if (!$this->permissionService->hasPermission($this->user, $permission)) {
+                $filteredData = $this->maskField($filteredData, $fieldName, $maskValue);
+            }
+        }
+        
+        return $filteredData;
+    }
+}
 
 #### Query Security Configuration
 
 **Query Permissions Structure**:
 ```php
 // config/security.php
+use Admin\Application\Query\GetUserQuery;
+use Admin\Application\Query\GetSensitiveReportQuery;
+use Admin\Application\Query\GetOrderQuery;
+use Admin\Application\Query\GetUserListQuery;
+use SharedKernel\Application\Query\HealthCheckQuery;
+use SharedKernel\Application\Query\PublicStatsQuery;
+
 return [
     'query_permissions' => [
-        'GetUserQuery' => [
+        GetUserQuery::class => [
             'permission' => 'user.view',
             'roles' => ['admin', 'manager', 'user']
         ],
-        'GetSensitiveReportQuery' => [
+        GetSensitiveReportQuery::class => [
             'permission' => 'reports.sensitive',
             'roles' => ['admin']
         ],
-        'GetOrderQuery' => [
+        GetOrderQuery::class => [
             'permission' => 'order.view',
             'roles' => ['admin', 'manager', 'user']
         ],
-        'GetUserListQuery' => [
+        GetUserListQuery::class => [
             'permission' => 'user.list',
             'roles' => ['admin', 'manager']
         ]
     ],
     'public_queries' => [
-        'HealthCheckQuery',
-        'PublicStatsQuery'
+        HealthCheckQuery::class,
+        PublicStatsQuery::class
     ]
 ];
 ```
@@ -317,8 +674,15 @@ return [
 ```php
 trait SecurityValidationTrait
 {
-    protected function validateSecurity(string $operationName, string $operationType, array $publicOperations = []): void
+    /**
+     * @param CommandInterface|QueryInterface $operation
+     * @param array $publicOperations
+     * @return void
+     */
+    protected function validateSecurity($operation, array $publicOperations = []): void
     {
+        $operationName = get_class($operation);
+        
         // 1. Check if operation is public (no authorization required)
         if (in_array($operationName, $publicOperations)) {
             return; // Public operations skip all security checks
@@ -330,10 +694,11 @@ trait SecurityValidationTrait
             throw new UnauthenticatedException('Authentication required');
         }
         
-        // 3. Get operation security configuration
-        $config = $this->getOperationConfig($operationName, $operationType);
+        // 3. Get operation security configuration using instanceof
+        $config = $this->getOperationConfig($operation);
         
         if (!$config) {
+            $operationType = $operation instanceof CommandInterface ? 'command' : 'query';
             throw new SecurityConfigurationException(
                 "No security configuration found for {$operationType}: {$operationName}"
             );
@@ -361,6 +726,7 @@ trait SecurityValidationTrait
         }
         
         // 6. Log successful authorization
+        $operationType = $operation instanceof CommandInterface ? 'command' : 'query';
         $this->auditLogger->logOperation(
             $user->getId(),
             $operationName,
@@ -369,13 +735,21 @@ trait SecurityValidationTrait
         );
     }
     
-    private function getOperationConfig(string $operationName, string $operationType): ?array
+    /**
+     * @param CommandInterface|QueryInterface $operation
+     * @return array|null
+     */
+    private function getOperationConfig($operation): ?array
     {
-        if ($operationType === 'command') {
-            return $this->commandPermissions[$operationName] ?? null;
-        } else {
-            return $this->queryPermissions[$operationName] ?? null;
+        $operationName = get_class($operation);
+        
+        if ($operation instanceof CommandInterface) {
+            return $this->securityConfig->getCommandPermissions()[$operationName] ?? null;
+        } elseif ($operation instanceof QueryInterface) {
+            return $this->securityConfig->getQueryPermissions()[$operationName] ?? null;
         }
+        
+        return null;
     }
 }
 ```
@@ -1596,12 +1970,12 @@ return [
         'customer.support' => ['support.ticket.create', 'support.view']
     ],
     'commands' => [
-        'CreateUserCommand' => 'user.create',
-        'UpdateUserCommand' => 'user.update',
-        'DeleteUserCommand' => 'user.delete',
-        'ViewOrderCommand' => 'order.view',
-        'ProcessOrderCommand' => 'order.process',
-        'GenerateReportCommand' => 'reports.generate'
+        CreateUserCommand::class => 'user.create',
+        UpdateUserCommand::class => 'user.update',
+        DeleteUserCommand::class => 'user.delete',
+        ViewOrderCommand::class => 'order.view',
+        ProcessOrderCommand::class => 'order.process',
+        GenerateReportCommand::class => 'reports.generate'
     ]
 ];
 ```
