@@ -6,7 +6,8 @@ RUN docker-php-ext-install \
     bcmath \
     pdo_mysql \
     mysqli \
-    opcache
+    opcache \
+    pcntl
 
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && pecl install xdebug-3.1.6 \
@@ -34,9 +35,5 @@ RUN echo "xdebug.mode=develop,debug,trace,profile" >> "$PHP_INI_DIR/conf.d/docke
 RUN echo "xdebug.start_with_request=trigger" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
 RUN echo "xdebug.profiler_output_name=cachegrind.%t" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
 RUN echo "xdebug.output_dir=/app/storage/xdebug" >> "$PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini"
-
-# Get rid of php-fpm's pid logs
-RUN echo -e "#!/bin/sh\nphp-fpm" > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
-CMD ["/usr/local/bin/start.sh"]
 
 WORKDIR /app
