@@ -1,4 +1,24 @@
 services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./localhost/traefik:/etc/traefik/dynamic:ro
+      - ./localhost/certs:/certs:ro
+    networks:
+      - php-ddd
+    labels:
+      - "traefik.enable=true"
+
   db:
     image: mysql:8.0.42
     command: mysqld --sql_mode="NO_ENGINE_SUBSTITUTION" --authentication_policy=mysql_native_password
@@ -12,12 +32,25 @@ services:
     networks:
       - php-ddd
   mail:
-    platform: linux/amd64
-    image: mailhog/mailhog
+    image: axllent/mailpit:latest
     ports:
-      - "1080:8025"
+      - "1025:1025"  # SMTP (keep for direct access if needed)
+    environment:
+      - MP_MAX_MESSAGES=500
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
     networks:
       - php-ddd
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mail.rule=Host(`mail.php-ddd.test`)"
+      - "traefik.http.routers.mail.entrypoints=websecure"
+      - "traefik.http.routers.mail.tls=true"
+      - "traefik.http.services.mail.loadbalancer.server.port=8025"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.mail-http.rule=Host(`mail.php-ddd.test`)"
+      - "traefik.http.routers.mail-http.entrypoints=web"
+      - "traefik.http.routers.mail-http.middlewares=redirect-to-https"
   redis:
     image: redis:7.4.2
     networks:
@@ -28,8 +61,6 @@ services:
     build:
       context: ./fuelphp/docker/localhost
       dockerfile: nginx.dockerfile
-    ports:
-      - "80:80"
     volumes:
       - ./fuelphp/docker/nginx.conf:/etc/nginx/nginx.conf
       - ./fuelphp/docker/localhost/nginx_default.conf:/etc/nginx/conf.d/default.conf
@@ -38,13 +69,24 @@ services:
       - php-ddd
     depends_on:
       - fuelphp
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`php-ddd.test`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.services.app.loadbalancer.server.port=80"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.app-http.rule=Host(`php-ddd.test`)"
+      - "traefik.http.routers.app-http.entrypoints=web"
+      - "traefik.http.routers.app-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
   fuelphp:
     build:
       context: ./fuelphp/docker
       dockerfile: localhost/php.dockerfile
     environment:
       FUEL_ENV: development
-      APP_URL: http://php-ddd.test/
+      APP_URL: https://php-ddd.test/
       PHP_MEMORY_LIMIT: 256M
       APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
       APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a
@@ -71,6 +113,45 @@ services:
       - redis
       - db
       - mail
+
+  cdn:
+    image: nginx:alpine
+    volumes:
+      - ./fuelphp/public/assets:/usr/share/nginx/html:ro
+      - ./localhost/cdn-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - php-ddd
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cdn.rule=Host(`images.php-ddd.test`)"
+      - "traefik.http.routers.cdn.entrypoints=websecure"
+      - "traefik.http.routers.cdn.tls=true"
+      - "traefik.http.services.cdn.loadbalancer.server.port=80"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.cdn-http.rule=Host(`images.php-ddd.test`)"
+      - "traefik.http.routers.cdn-http.entrypoints=web"
+      - "traefik.http.routers.cdn-http.middlewares=redirect-to-https"
+      # Add cache headers middleware
+      - "traefik.http.middlewares.cdn-cache.headers.customResponseHeaders.Cache-Control=public, max-age=31536000, immutable"
+      - "traefik.http.middlewares.cdn-cache.headers.customResponseHeaders.X-CDN=local-cdn"
+      - "traefik.http.routers.cdn.middlewares=cdn-cache"
+
+  dashboard:
+    image: b4bz/homer:latest
+    volumes:
+      - ./localhost/dashboard:/www/assets
+    networks:
+      - php-ddd
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`dashboard.php-ddd.test`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.dashboard-http.rule=Host(`dashboard.php-ddd.test`)"
+      - "traefik.http.routers.dashboard-http.entrypoints=web"
+      - "traefik.http.routers.dashboard-http.middlewares=redirect-to-https"
 
 networks:
   php-ddd:

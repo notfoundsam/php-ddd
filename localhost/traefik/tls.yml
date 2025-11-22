@@ -1,0 +1,11 @@
+tls:
+  certificates:
+    - certFile: /certs/php-ddd.test.pem
+      keyFile: /certs/php-ddd.test-key.pem
+      stores:
+        - default
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/php-ddd.test.pem
+        keyFile: /certs/php-ddd.test-key.pem

@@ -1,0 +1,83 @@
+---
+# Homepage configuration
+# See https://fontawesome.com/v5/search for icons options
+
+title: "PHP-DDD Development"
+subtitle: "Local Development Environment"
+logo: "logo.png"
+# icon: "fas fa-skull-crossbones" # Optional icon
+
+header: true
+footer: '<p>Local Development Environment | <a href="https://github.com/b4bz/homer">Homer Dashboard</a></p>'
+
+# Optional theme
+theme: default
+colors:
+  light:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#4285f4"
+    highlight-hover: "#5a95f5"
+    background: "#f5f5f5"
+    card-background: "#ffffff"
+    text: "#363636"
+    text-header: "#ffffff"
+    text-title: "#303030"
+    text-subtitle: "#424242"
+    card-shadow: rgba(0, 0, 0, 0.1)
+    link: "#3273dc"
+    link-hover: "#363636"
+  dark:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#4285f4"
+    highlight-hover: "#5a95f5"
+    background: "#131313"
+    card-background: "#2b2b2b"
+    text: "#eaeaea"
+    text-header: "#ffffff"
+    text-title: "#fafafa"
+    text-subtitle: "#f5f5f5"
+    card-shadow: rgba(0, 0, 0, 0.4)
+    link: "#3273dc"
+    link-hover: "#ffdd57"
+
+# Optional navbar
+# links: [] # Allows for navbar (dark mode, search) without any links
+links:
+  - name: "GitHub"
+    icon: "fab fa-github"
+    url: "https://github.com/notfoundsam/php-ddd"
+    target: "_blank"
+
+# Services
+# First level array represents a group.
+# Leave only a "items" key if not using group (group name, icon & tagstyle are optional, section separation will not be displayed).
+services:
+  - name: "Application Services"
+    icon: "fas fa-cloud"
+    items:
+      - name: "Main Application"
+        icon: "fas fa-rocket"
+        subtitle: "FuelPHP Application"
+        tag: "app"
+        keywords: "main app application"
+        url: "https://php-ddd.test"
+        target: "_blank"
+
+      - name: "Images CDN"
+        icon: "fas fa-images"
+        subtitle: "Image Assets Only"
+        tag: "cdn"
+        keywords: "cdn images static photos"
+        url: "https://images.php-ddd.test"
+        target: "_blank"
+
+  - name: "Development Tools"
+    icon: "fas fa-tools"
+    items:
+      - name: "Mail Catcher"
+        icon: "fas fa-envelope"
+        subtitle: "Mailpit Email Testing"
+        tag: "mail"
+        keywords: "email mail mailpit testing"
+        url: "https://mail.php-ddd.test"
+        target: "_blank"

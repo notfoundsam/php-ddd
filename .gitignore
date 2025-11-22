@@ -1,1 +1,4 @@
 .idea
+
+# SSL certificates (generated locally with mkcert)
+/localhost/certs/

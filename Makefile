@@ -1,4 +1,6 @@
 install:
+	@$(MAKE) dns-mapping
+	@$(MAKE) setup-ssl
 	docker compose build
 	docker compose run --rm fuelphp composer -d fuelphp install
 build:
@@ -7,6 +9,12 @@ composer-autoload:
 	docker compose run --rm fuelphp composer -d fuelphp dump-autoload
 up:
 	docker compose up -d
+	@echo "⏳ Waiting for services to start..."
+	@sleep 3
+	@echo "🌐 Opening dashboard in browser..."
+	@open https://dashboard.php-ddd.test || true
+open:
+	@open https://dashboard.php-ddd.test
 stop:
 	docker compose stop
 sh:
@@ -15,3 +23,13 @@ linter:
 	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpcs --standard=backend/phpcs.xml backend
 test-unit:
 	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpunit backend/tests
+dns-mapping:
+	./localhost/dns-mapping.sh
+setup-ssl:
+	./localhost/ssl-setup.sh
+cleanup:
+	./localhost/cleanup.sh
+clean:
+	@echo "🧹 Cleaning up Docker resources..."
+	docker compose down -v
+	@echo "✅ Docker containers and volumes removed"
