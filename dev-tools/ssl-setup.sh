@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Get the script directory (localhost/)
+# Get the script directory (dev-tools/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CERTS_DIR="$SCRIPT_DIR/certs"
 

@@ -24,11 +24,11 @@ linter:
 test-unit:
 	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpunit backend/tests
 dns-mapping:
-	./localhost/dns-mapping.sh
+	./dev-tools/dns-mapping.sh
 setup-ssl:
-	./localhost/ssl-setup.sh
+	./dev-tools/ssl-setup.sh
 cleanup:
-	./localhost/cleanup.sh
+	./dev-tools/cleanup.sh
 clean:
 	@echo "🧹 Cleaning up Docker resources..."
 	docker compose down -v

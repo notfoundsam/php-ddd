@@ -12,8 +12,8 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./localhost/traefik:/etc/traefik/dynamic:ro
-      - ./localhost/certs:/certs:ro
+      - ./dev-tools/traefik:/etc/traefik/dynamic:ro
+      - ./dev-tools/certs:/certs:ro
     networks:
       - php-ddd
     labels:
@@ -118,7 +118,7 @@ services:
     image: nginx:alpine
     volumes:
       - ./fuelphp/public/assets:/usr/share/nginx/html:ro
-      - ./localhost/cdn-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./dev-tools/cdn-nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - php-ddd
     labels:
@@ -139,7 +139,7 @@ services:
   dashboard:
     image: b4bz/homer:latest
     volumes:
-      - ./localhost/dashboard:/www/assets
+      - ./dev-tools/dashboard:/www/assets
     networks:
       - php-ddd
     labels:
