@@ -10,6 +10,8 @@
  * @link       https://fuelphp.com
  */
 
+use Fuel\Core\Response;
+
 return array(
 	/**
 	 * -------------------------------------------------------------------------
@@ -19,6 +21,7 @@ return array(
 	 */
 
 	'_root_' => 'welcome/index',
+    'healthcheck' => function () { return Response::forge('healthy'); },
 
 	/**
 	 * -------------------------------------------------------------------------
