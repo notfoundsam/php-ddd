@@ -62,7 +62,7 @@ services:
       context: ./dev-tools/app-fuelphp
       dockerfile: nginx.dockerfile
     volumes:
-      - ./fuelphp/docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
       - ./dev-tools/app-fuelphp/nginx_default.conf:/etc/nginx/conf.d/default.conf
       - ./fuelphp/public:/app/fuelphp/public
     networks:
