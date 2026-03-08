@@ -59,11 +59,11 @@ services:
       - "6379:6379"
   nginx:
     build:
-      context: ./fuelphp/docker/localhost
+      context: ./dev-tools/app-fuelphp
       dockerfile: nginx.dockerfile
     volumes:
       - ./fuelphp/docker/nginx.conf:/etc/nginx/nginx.conf
-      - ./fuelphp/docker/localhost/nginx_default.conf:/etc/nginx/conf.d/default.conf
+      - ./dev-tools/app-fuelphp/nginx_default.conf:/etc/nginx/conf.d/default.conf
       - ./fuelphp/public:/app/fuelphp/public
     networks:
       - php-ddd
@@ -82,8 +82,8 @@ services:
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
   fuelphp:
     build:
-      context: ./fuelphp/docker
-      dockerfile: localhost/php.dockerfile
+      context: ./dev-tools/app-fuelphp
+      dockerfile: php.dockerfile
     environment:
       FUEL_ENV: development
       APP_URL: https://php-ddd.test/
