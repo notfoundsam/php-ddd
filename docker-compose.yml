@@ -63,7 +63,7 @@ services:
       dockerfile: nginx.dockerfile
     volumes:
       - ./docker/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/nginx_default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/fuelphp/nginx_default.conf:/etc/nginx/conf.d/default.conf
       - ./fuelphp/public:/app/fuelphp/public
     networks:
       - php-ddd
