@@ -48,6 +48,6 @@ COPY docker/php-fpm-docker.conf $PHP_INI_DIR/../php-fpm.d/zzz-docker.conf
 
 COPY --from=vendor --chown=${WWWUSER}:${WWWUSER} /app /app
 COPY --chown=${WWWUSER}:${WWWUSER} ./fuelphp/public /app/fuelphp/public
-COPY --from=assets --chown=${WWWUSER}:${WWWUSER} /app/fuelphp/public/assets /app/fuelphp/public/assets
+#COPY --from=assets --chown=${WWWUSER}:${WWWUSER} /app/public/assets /app/public/assets
 
 WORKDIR /app
