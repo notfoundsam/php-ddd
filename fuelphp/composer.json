@@ -28,7 +28,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Admin\\": "../backend/src/Admin/",
+      "Crm\\": "../backend/src/Crm/",
       "Marketing\\": "../backend/src/Marketing/",
       "SharedKernel\\": "../backend/src/SharedKernel/"
     }
