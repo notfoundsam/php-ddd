@@ -63,12 +63,14 @@ services:
       dockerfile: nginx.dockerfile
     volumes:
       - ./docker/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/fuelphp/nginx_default.conf:/etc/nginx/conf.d/default.conf
+      - ./dev-tools/nginx_default.conf:/etc/nginx/conf.d/default.conf
       - ./fuelphp/public:/app/fuelphp/public
+      - ./laravel/public:/app/laravel/public
     networks:
       - php-ddd
     depends_on:
       - fuelphp
+      - laravel
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`php-ddd.test`)"
@@ -109,6 +111,45 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./fuelphp:/app/fuelphp
+      - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./docker/php-fpm-docker.conf:/usr/local/etc/php-fpm.d/zzz-docker.conf
+    networks:
+      - php-ddd
+    depends_on:
+      - redis
+      - db
+      - mail
+
+  laravel:
+    build:
+      context: ./dev-tools/app-laravel
+      dockerfile: php.dockerfile
+    environment:
+      APP_NAME: PhpDdd
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: https://php-ddd.test
+      PHP_MEMORY_LIMIT: 256M
+      PHP_UPLOAD_MAX_FILESIZE: 20M
+      PHP_POST_MAX_SIZE: 25M
+
+      # MySQL config
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ebdb
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      # Redis config
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # IDE config
+      PHP_IDE_CONFIG: serverName=DockerLaravel
+    volumes:
+      - ./backend:/app/backend
+      - ./laravel:/app/laravel
       - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./docker/php-fpm-docker.conf:/usr/local/etc/php-fpm.d/zzz-docker.conf
     networks:
