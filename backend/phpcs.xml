@@ -1,5 +1,11 @@
 <?xml version="1.0"?>
 <ruleset name="MyProject">
+    <!-- PHP Version -->
+    <config name="testVersion" value="7.4"/>
+
+    <!-- PHP Compatibility -->
+    <rule ref="PHPCompatibility"/>
+
     <!-- PSR12 -->
     <rule ref="PSR12"/>
 
@@ -24,4 +30,39 @@
             <property name="searchAnnotations" value="true"/>
         </properties>
     </rule>
+    <rule ref="SlevomatCodingStandard.Classes.MethodSpacing">
+        <properties>
+            <property name="minLinesCount" value="1"/>
+            <property name="maxLinesCount" value="1"/>
+        </properties>
+    </rule>
+    <rule ref="SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly">
+        <properties>
+            <property name="allowFullyQualifiedGlobalFunctions" value="true"/>
+            <property name="allowFullyQualifiedGlobalConstants" value="true"/>
+        </properties>
+    </rule>
+
+    <!-- Type Hints -->
+    <!-- ParameterTypeHint and ReturnTypeHint are disabled: PHP 7.4 lacks the `mixed` type,
+         making these rules produce unfixable violations for mixed-type signatures. -->
+    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.NullableTypeForNullDefaultValue"/>
+
+    <!-- Dead / Useless Code -->
+    <rule ref="SlevomatCodingStandard.PHP.UselessParentheses"/>
+    <rule ref="SlevomatCodingStandard.PHP.UselessSemicolon"/>
+    <rule ref="SlevomatCodingStandard.Functions.UnusedInheritedVariablePassedToClosure"/>
+    <rule ref="SlevomatCodingStandard.Exceptions.DeadCatch"/>
+
+    <!-- Modern PHP Syntax -->
+    <rule ref="SlevomatCodingStandard.Classes.ModernClassNameReference"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireNullCoalesceOperator"/>
+    <rule ref="SlevomatCodingStandard.Operators.RequireCombinedAssignmentOperator"/>
+    <rule ref="SlevomatCodingStandard.PHP.ShortList"/>
+
+    <!-- Control Flow / Readability -->
+    <rule ref="SlevomatCodingStandard.ControlStructures.UselessIfConditionWithReturn"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.UselessTernaryOperator"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.EarlyExit"/>
 </ruleset>

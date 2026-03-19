@@ -17,9 +17,7 @@ open:
 	@open https://dashboard.php-ddd.test
 stop:
 	docker compose stop
-sh:
-	docker compose exec fuelphp sh
-linter:
+lint:
 	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpcs --standard=backend/phpcs.xml backend
 test-unit:
 	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpunit backend/tests
