@@ -17,6 +17,7 @@ ARG GITHUB_TOKEN
 RUN apk add --no-cache git
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 WORKDIR /app
+COPY ./backend/composer.json /app/backend/composer.json
 COPY ./fuelphp/composer.json /app/fuelphp/composer.json
 COPY ./fuelphp/composer.lock /app/fuelphp/composer.lock
 RUN if [ -n "$GITHUB_TOKEN" ]; then composer config -g github-oauth.github.com $GITHUB_TOKEN; fi

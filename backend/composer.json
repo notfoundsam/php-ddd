@@ -1,0 +1,32 @@
+{
+  "name": "app/backend",
+  "description": "Domain layer with bounded contexts",
+  "type": "library",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "Crm\\": "src/Crm/",
+      "Marketing\\": "src/Marketing/",
+      "SharedKernel\\": "src/SharedKernel/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\Fixtures\\": "tests/Fixtures/",
+      "Tests\\Unit\\": "tests/Unit/"
+    }
+  },
+  "require": {
+    "php": "^7.4"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6",
+    "slevomat/coding-standard": "^8.17",
+    "phpcompatibility/php-compatibility": "^9.3"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}

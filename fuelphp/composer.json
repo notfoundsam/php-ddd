@@ -11,11 +11,18 @@
     "PHP7"
   ],
   "license": "MIT",
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../backend"
+    }
+  ],
   "require": {
     "php": "^7.4",
     "ext-json": "*",
     "ext-pcntl": "*",
     "composer/installers": "~1.0",
+    "app/backend": "@dev",
     "fuel/core": "1.8.*",
     "fuel/auth": "1.8.*",
     "fuel/email": "1.8.*",
@@ -25,24 +32,6 @@
     "fuelphp/upload": "2.0.6",
     "aws/aws-sdk-php": "^3.337",
     "php-di/php-di": "^6.4"
-  },
-  "autoload": {
-    "psr-4": {
-      "Crm\\": "../backend/src/Crm/",
-      "Marketing\\": "../backend/src/Marketing/",
-      "SharedKernel\\": "../backend/src/SharedKernel/"
-    }
-  },
-  "require-dev": {
-    "slevomat/coding-standard": "^8.17",
-    "phpunit/phpunit": "^9.6",
-    "phpcompatibility/php-compatibility": "^9.3"
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "Tests\\Fixtures\\": "../backend/tests/Fixtures/",
-      "Tests\\Unit\\": "../backend/tests/Unit/"
-    }
   },
   "suggest": {
     "dwoo/dwoo": "Allow Dwoo templating with the Parser package",

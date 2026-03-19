@@ -2,6 +2,7 @@ install:
 	@$(MAKE) dns-mapping
 	@$(MAKE) setup-ssl
 	docker compose build
+	docker compose run --rm fuelphp composer -d backend install
 	docker compose run --rm fuelphp composer -d fuelphp install
 build:
 	docker compose build
@@ -18,9 +19,9 @@ open:
 stop:
 	docker compose stop
 lint:
-	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpcs --standard=backend/phpcs.xml backend
+	docker compose run --rm fuelphp backend/vendor/bin/phpcs --standard=backend/phpcs.xml backend
 test-unit:
-	docker compose run --rm fuelphp fuelphp/fuel/vendor/bin/phpunit backend/tests
+	docker compose run --rm fuelphp backend/vendor/bin/phpunit backend/tests
 dns-mapping:
 	./dev-tools/dns-mapping.sh
 setup-ssl:

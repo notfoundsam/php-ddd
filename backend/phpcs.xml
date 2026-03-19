@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <ruleset name="MyProject">
+    <exclude-pattern>vendor/</exclude-pattern>
+
     <!-- PHP Version -->
     <config name="testVersion" value="7.4"/>
 
