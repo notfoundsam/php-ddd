@@ -4,52 +4,81 @@ This project demonstrates how to **gradually migrate** from an older PHP framewo
 
 ## Overview
 
-- **Current Framework**: FuelPHP
-- **Target Framework**: Laravel
-- **PHP Version**: 7.4
+- **Legacy Framework**: FuelPHP (PHP 7.4)
+- **Target Framework**: Laravel 10 (PHP 8.1)
+- **Shared Domain Layer**: `backend/` — framework-agnostic, pure PHP 7.4+
 
-The core idea of this migration is to build a *seamless transition* by introducing a DDD-inspired domain layer that will decouple business rules from the existing FuelPHP implementation. This approach allows both frameworks to **coexist in parallel**, so you can keep your production application running while incrementally rewriting and moving features to Laravel.
+Both frameworks run side by side in separate Docker containers, sharing the same domain layer and database. A single nginx instance routes traffic by URL path — migrated routes go to Laravel, everything else falls through to FuelPHP.
 
-## Key Goals
+## Project Structure
 
-✅ Introduce a shared **Domain Layer** that is framework-agnostic  
-✅ Refactor business logic to live in the Domain Layer  
-✅ Gradually migrate user-facing features from FuelPHP to Laravel  
-✅ Run FuelPHP and Laravel side by side during the transition  
-✅ Avoid a risky, big-bang rewrite and reduce migration downtime
+```
+php-ddd/
+├── backend/           # Shared domain layer (Composer package: app/backend)
+│   ├── src/           # Bounded contexts: Crm/, Marketing/, SharedKernel/
+│   ├── tests/         # Unit tests and fixtures
+│   ├── phpcs.xml      # Linting rules (PSR-12 + Slevomat)
+│   └── composer.json   # Own dependencies (dev tools only)
+├── fuelphp/           # Legacy FuelPHP application (PHP 7.4)
+├── laravel/           # New Laravel application (PHP 8.1)
+├── docker/            # Production Docker configs
+├── dev-tools/         # Development Docker configs, SSL, DNS, dashboard
+└── docker-compose.yml
+```
+
+### Backend Package
+
+The `backend/` directory is a standalone Composer package (`app/backend`) that both frameworks include via a path repository:
+
+```json
+"repositories": [{ "type": "path", "url": "../backend" }],
+"require": { "app/backend": "@dev" }
+```
+
+Composer creates a symlink, so changes in `backend/` are immediately available to both frameworks.
+
+## Development Commands
+
+```bash
+# Initial setup (DNS, SSL, build, install all dependencies)
+make install
+
+# Start/stop services
+make up
+make stop
+
+# Run backend linter (PSR-12 + Slevomat)
+make lint
+
+# Run backend unit tests
+make test-unit
+
+# Rebuild containers
+make build
+```
+
+## Routing
+
+Traffic routing is handled by nginx in `dev-tools/nginx_default.conf`. Migrated routes are added to a single regex:
+
+```nginx
+# Add migrated paths to the regex
+location ~ ^/(laravel|api/v2|admin|users) {
+    fastcgi_pass laravel:9000;
+    ...
+}
+```
+
+All other requests fall through to FuelPHP. As migration progresses, add more paths to the regex. When complete, flip the default to Laravel and remove FuelPHP.
 
 ## Migration Strategy
 
-1. **Identify Core Domain Logic**
-    - Analyze and document business rules.
-    - Move business rules into a shared domain layer.
-
-2. **Set Up Parallel Frameworks**
-    - Install Laravel alongside FuelPHP in the same project (or same server).
-    - Route new features through Laravel while legacy features continue on FuelPHP.
-
-3. **Incremental Migration**
-    - Refactor and migrate feature-by-feature to Laravel.
-    - Migrate the UI, one module at a time, reusing the domain logic.
-
-4. **Seamless Coexistence**
-    - Bridge the frameworks as needed to share sessions, authentication, etc.
-
-5. **Finalize Migration**
-    - Retire FuelPHP once all features are fully migrated.
-
-## Benefits
-
-- **Zero downtime** for users
-- Reuse business logic
-- Easier testing of features in Laravel
-- Smooth knowledge transfer for teams
-- Better maintainability thanks to DDD structure
+1. **Shared Domain Layer** — business logic lives in `backend/`, framework-agnostic
+2. **Route-by-Route Migration** — move one endpoint at a time from FuelPHP to Laravel
+3. **Single Domain** — both frameworks serve `php-ddd.test`, nginx routes by path
+4. **Shared Database** — both apps connect to the same MySQL instance
+5. **Finalize** — retire FuelPHP once all routes are migrated, then upgrade `backend/` to PHP 8.1+
 
 ## License
 
 This repository is provided under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-*Happy migrating! 🚀*
