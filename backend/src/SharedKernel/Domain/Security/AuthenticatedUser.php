@@ -10,6 +10,7 @@ final class AuthenticatedUser
 
     private string $email;
 
+    /** @var array<string> */
     private array $roles;
 
     public function __construct(string $id, string $email, array $roles = [])

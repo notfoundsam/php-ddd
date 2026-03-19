@@ -8,6 +8,7 @@ use SharedKernel\Domain\Event\EventInterface;
 
 abstract class AggregateRoot
 {
+    /** @var array<EventInterface> */
     private array $recordedEvents = [];
 
     protected function record(EventInterface $event): void

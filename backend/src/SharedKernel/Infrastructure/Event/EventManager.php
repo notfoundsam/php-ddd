@@ -10,6 +10,7 @@ use SharedKernel\Domain\Event\PostCommitEventInterface;
 use SharedKernel\Domain\Event\EventInterface;
 use SharedKernel\Domain\Event\EventManagerInterface;
 use SharedKernel\Domain\Event\TransactionalEventInterface;
+use LogicException;
 
 final class EventManager implements EventManagerInterface
 {
@@ -44,7 +45,7 @@ final class EventManager implements EventManagerInterface
         } elseif ($event instanceof OutboxEventInterface) {
             $this->outboxEvents[] = $event;
         } else {
-            throw new \LogicException('Unclassified event: ' . get_class($event));
+            throw new LogicException('Unclassified event: ' . get_class($event));
         }
     }
 

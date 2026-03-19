@@ -10,6 +10,7 @@ use SharedKernel\Domain\Event\ListenerProviderInterface;
 
 final class ListenerProvider implements ListenerProviderInterface
 {
+    /** @var array<string, array<EventListenerInterface>> */
     private array $listeners = [];
 
     public function addListener(string $eventClassName, EventListenerInterface $listener): void
@@ -31,9 +32,11 @@ final class ListenerProvider implements ListenerProviderInterface
         );
 
         foreach ($eventClasses as $eventClass) {
-            if (isset($this->listeners[$eventClass])) {
-                $listeners = array_merge($listeners, $this->listeners[$eventClass]);
+            if (!isset($this->listeners[$eventClass])) {
+                continue;
             }
+
+            $listeners = array_merge($listeners, $this->listeners[$eventClass]);
         }
 
         return $listeners;
