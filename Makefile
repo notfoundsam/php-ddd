@@ -9,6 +9,7 @@ build:
 	docker compose build
 composer-autoload:
 	docker compose run --rm fuelphp composer -d fuelphp dump-autoload
+	docker compose run --rm laravel composer -d laravel dump-autoload
 up:
 	docker compose up -d
 	@echo "⏳ Waiting for services to start..."
