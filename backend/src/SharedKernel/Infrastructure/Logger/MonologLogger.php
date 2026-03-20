@@ -8,6 +8,7 @@ use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use SharedKernel\Domain\Environment;
 use SharedKernel\Domain\Logger\LoggerInterface;
 
 class MonologLogger implements LoggerInterface
@@ -16,11 +17,11 @@ class MonologLogger implements LoggerInterface
 
     private Logger $logger;
 
-    public function __construct(string $env)
+    public function __construct(Environment $environment)
     {
-        $this->logger = new Logger('php-ddd-' . $env);
+        $this->logger = new Logger('php-ddd-' . $environment->getValue());
 
-        if ($env === 'development') {
+        if ($environment->isDevelopment()) {
             $streamHandler = new RotatingFileHandler(self::LOG_FILE_PATH, 7, Logger::DEBUG);
         } else {
             $streamHandler = new StreamHandler('php://stdout', Logger::INFO);
