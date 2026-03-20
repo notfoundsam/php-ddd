@@ -25,7 +25,7 @@ return [
         'type'        => 'mysqli',
         'connection'  => [
             'hostname'   => getenv('DB_HOSTNAME'),
-            'port'       => getenv('DB_PORT'),
+            'port'       => getenv('DB_PORT') ?: 3306,
             'database'   => getenv('DB_DB_NAME'),
             'username'   => getenv('DB_USERNAME'),
             'password'   => getenv('DB_PASSWORD'),
@@ -34,8 +34,8 @@ return [
 
     'redis' => [
         'default' => [
-            'hostname' => getenv('REDIS_HOST'),
-            'port' => getenv('REDIS_PORT'),
+            'hostname' => getenv('REDIS_PRIMARY_ENDPOINT'),
+            'port' => getenv('REDIS_PRIMARY_PORT') ?: 6379,
             'timeout' => null,
         ],
     ],
