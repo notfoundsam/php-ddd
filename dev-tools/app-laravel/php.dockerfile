@@ -8,8 +8,8 @@ RUN docker-php-ext-install \
     pcntl
 
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS linux-headers \
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug \
+    && pecl install redis xdebug \
+    && docker-php-ext-enable redis xdebug \
     && apk del -f .build-deps
 
 # Composer settings

@@ -19,6 +19,7 @@
   ],
   "require": {
     "php": "^7.4",
+    "ext-redis": "*",
     "ext-json": "*",
     "ext-pcntl": "*",
     "composer/installers": "~1.0",
