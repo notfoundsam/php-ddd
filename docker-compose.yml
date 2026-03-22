@@ -10,6 +10,8 @@ x-shared-env: &shared-env
   # Cache settings
   REDIS_PRIMARY_ENDPOINT: redis
   REDIS_READER_ENDPOINT: redis
+  # CDN settings
+  CDN_IMAGES_URL: https://images.php-ddd.test
 
 services:
   traefik:
