@@ -15,7 +15,8 @@ require COREPATH . 'bootstrap.php';
 
 // Add framework overload classes here
 \Autoloader::add_classes(array(
-    'Log' => APPPATH . 'classes/log.php',
+    'Log'    => APPPATH . 'classes/log.php',
+    'Cookie' => APPPATH . 'classes/cookie.php',
 ));
 
 // Register the autoloader
