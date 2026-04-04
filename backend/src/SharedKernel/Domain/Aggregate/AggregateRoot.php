@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace SharedKernel\Domain\Aggregate;
 
-use SharedKernel\Domain\Event\EventInterface;
+use SharedKernel\Domain\EventSystem\OutboxEventInterface;
 
 abstract class AggregateRoot
 {
-    /** @var array<EventInterface> */
+    /** @var array<OutboxEventInterface> */
     private array $recordedEvents = [];
 
-    protected function record(EventInterface $event): void
+    protected function record(OutboxEventInterface $event): void
     {
         $this->recordedEvents[] = $event;
     }
 
     /**
-     * @return iterable<EventInterface>
+     * @return iterable<OutboxEventInterface>
      */
     public function releaseEvents(): iterable
     {
