@@ -15,8 +15,8 @@ require COREPATH . 'bootstrap.php';
 
 // Add framework overload classes here
 \Autoloader::add_classes(array(
-    'Log'    => APPPATH . 'classes/log.php',
     'Cookie' => APPPATH . 'classes/cookie.php',
+    'Log' => APPPATH . 'classes/log.php',
 ));
 
 // Register the autoloader
@@ -32,11 +32,11 @@ require COREPATH . 'bootstrap.php';
  */
 Fuel::$env = Arr::get($_SERVER, 'FUEL_ENV', Arr::get($_ENV, 'FUEL_ENV', getenv('FUEL_ENV') ?: Fuel::DEVELOPMENT));
 
-// Initialize the framework with the config file.
-\Fuel::init('config.php');
-
 // Load PHP-DI container
 $container = require APPPATH . 'config/di.php';
 
 // Make the container accessible globally
 $GLOBALS['container'] = $container;
+
+// Initialize the framework with the config file.
+\Fuel::init('config.php');
