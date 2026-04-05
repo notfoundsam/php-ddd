@@ -5,17 +5,17 @@
 
 ## Context
 
-The project needs a file storage abstraction that works across both FuelPHP and Laravel applications through the SharedKernel. Storage must support AWS S3 in production/staging and local filesystem in development, with CDN URL resolution for public assets.
+The project needs a file storage abstraction that works across multiple framework applications through the SharedKernel. Storage must support AWS S3 in production/staging and local filesystem in development, with CDN URL resolution for public assets.
 
-Laravel's Filesystem (Flysystem) was considered but not adopted — it would add a heavy dependency to the framework-agnostic domain layer and provides more abstraction than needed for our use case.
+Flysystem was considered but not adopted — it would add a heavy dependency to the framework-agnostic domain layer and provides more abstraction than needed for our use case.
 
 ## Decision
 
 ### Framework-agnostic LocalStorage
 
-`LocalStorage` uses plain PHP functions (`file_get_contents`, `file_put_contents`, `mkdir`, `unlink`) instead of framework-specific file helpers. The initial implementation used `Fuel\Core\File`, which would have required a separate `LaravelLocalStorage` during migration. A single framework-agnostic implementation serves both.
+`LocalStorage` uses plain PHP functions (`file_get_contents`, `file_put_contents`, `mkdir`, `unlink`) instead of framework-specific file helpers. This avoids coupling to any framework and eliminates the need for separate implementations per framework.
 
-The storage base path is defined as a constant (`/app/storage/`) since both frameworks share the same Docker volume.
+The storage base path is defined as a constant (`/app/storage/`) since all framework applications share the same Docker volume.
 
 ### Stream-based interface
 
@@ -41,7 +41,7 @@ All storage implementations validate paths through `buildFullPath()` in `StringS
 
 ### Environment variable validation in StorageFactory
 
-`StorageFactory` validates `AWS_BUCKET` and `AWS_DEFAULT_REGION` environment variables before creating `S3Storage`, throwing `InvalidArgumentException` with a clear message if either is missing. Variable names follow Laravel/AWS SDK conventions for consistency across the project.
+`StorageFactory` validates `AWS_BUCKET` and `AWS_DEFAULT_REGION` environment variables before creating `S3Storage`, throwing `InvalidArgumentException` with a clear message if either is missing. Variable names follow AWS SDK conventions for consistency across the project.
 
 ### S3 CopySource URL encoding
 
@@ -66,8 +66,6 @@ Infrastructure/Storage/
 ## Consequences
 
 - Both implementations share path validation and string convenience methods via trait
-- `LocalStorage` tests require GuzzleHttp PSR-7 (available via FuelPHP composer, skipped in backend-only test suite)
-- `S3Storage` tests require AWS SDK (same situation)
 - Adding a new storage backend (e.g., EFS, vendor S3) means implementing `StorageInterface` and updating `StorageFactory`
 - CDN mappings must be configured in DI per environment
 - `LocalStorage` is tied to `/app/storage/` constant — if the path needs to vary, it should become a constructor parameter
