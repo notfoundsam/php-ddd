@@ -7,6 +7,7 @@ use Infrastructure\EventSystem\FuelPhpScheduledEventRepository;
 use Psr\Container\ContainerInterface;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryBusInterface;
+use SharedKernel\Application\CqrsMessageBus\TransactionManagerInterface;
 use SharedKernel\Domain\Cache\CacheInterface;
 use SharedKernel\Domain\Environment;
 use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
@@ -27,6 +28,7 @@ use SharedKernel\Infrastructure\EventSystem\OutboxEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\ScheduledEventProcessor;
 use SharedKernel\Infrastructure\CqrsMessageBus\CommandBusFactory;
 use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\CommandLoggerDecorator;
+use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\CommandTransactionDecorator;
 use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\QueryLoggerDecorator;
 use SharedKernel\Infrastructure\CqrsMessageBus\QueryBusFactory;
 use SharedKernel\Infrastructure\Logger\LoggerFactory;
@@ -62,6 +64,12 @@ $containerBuilder->addDefinitions(array_merge([
             // new CrmCommandHandlerRegistry(),
             // new MarketingCommandHandlerRegistry(),
         ]))();
+        $bus = new CommandTransactionDecorator(
+            $bus,
+            $c->get(DomainEventCollectorInterface::class),
+            $c->get(TransactionManagerInterface::class),
+            $c->get(OutboxEventProcessorInterface::class)
+        );
         return new CommandLoggerDecorator($bus, $c->get(LoggerInterface::class));
     }),
     QueryBusInterface::class => DI\factory(function (ContainerInterface $c) {
