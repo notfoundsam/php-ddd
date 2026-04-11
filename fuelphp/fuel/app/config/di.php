@@ -5,6 +5,8 @@ use Fuel\Core\Fuel;
 use Infrastructure\EventSystem\FuelPhpOutboxRepository;
 use Infrastructure\EventSystem\FuelPhpScheduledEventRepository;
 use Psr\Container\ContainerInterface;
+use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
+use SharedKernel\Application\CqrsMessageBus\Queries\QueryBusInterface;
 use SharedKernel\Domain\Cache\CacheInterface;
 use SharedKernel\Domain\Environment;
 use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
@@ -23,6 +25,10 @@ use SharedKernel\Infrastructure\EventSystem\EventFactoryFactory;
 use SharedKernel\Infrastructure\EventSystem\ListenerProviderFactory;
 use SharedKernel\Infrastructure\EventSystem\OutboxEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\ScheduledEventProcessor;
+use SharedKernel\Infrastructure\CqrsMessageBus\CommandBusFactory;
+use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\CommandLoggerDecorator;
+use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\QueryLoggerDecorator;
+use SharedKernel\Infrastructure\CqrsMessageBus\QueryBusFactory;
 use SharedKernel\Infrastructure\Logger\LoggerFactory;
 use SharedKernel\Infrastructure\Redis\RedisClientFactory;
 use SharedKernel\Infrastructure\Storage\CdnUrlResolver;
@@ -47,6 +53,24 @@ $containerBuilder->addDefinitions(array_merge([
     StorageFactory::class => DI\autowire(StorageFactory::class),
     StorageInterface::class => DI\factory(function(ContainerInterface $c) {
         return $c->get(StorageFactory::class)->create();
+    }),
+
+    // CQRS Message Bus
+    CommandBusInterface::class => DI\factory(function (ContainerInterface $c) {
+        $bus = (new CommandBusFactory($c, [
+            // Add bounded-context registries here:
+            // new CrmCommandHandlerRegistry(),
+            // new MarketingCommandHandlerRegistry(),
+        ]))();
+        return new CommandLoggerDecorator($bus, $c->get(LoggerInterface::class));
+    }),
+    QueryBusInterface::class => DI\factory(function (ContainerInterface $c) {
+        $bus = (new QueryBusFactory($c, [
+            // Add bounded-context registries here:
+            // new CrmQueryHandlerRegistry(),
+            // new MarketingQueryHandlerRegistry(),
+        ]))();
+        return new QueryLoggerDecorator($bus, $c->get(LoggerInterface::class));
     }),
 
     // Event System
