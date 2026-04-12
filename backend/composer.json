@@ -22,8 +22,10 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^9.6",
+    "phpstan/phpstan": "^1.10",
     "slevomat/coding-standard": "^8.17",
-    "phpcompatibility/php-compatibility": "^9.3"
+    "phpcompatibility/php-compatibility": "^9.3",
+    "phpstan/phpstan-phpunit": "^1.3"
   },
   "config": {
     "allow-plugins": {

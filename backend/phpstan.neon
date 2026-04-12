@@ -1,0 +1,39 @@
+includes:
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+        - tests
+    ignoreErrors:
+        # External SDKs not in backend's composer dependencies
+        # These classes are available through FuelPHP's vendor at runtime
+        -
+            identifier: class.notFound
+            paths:
+                - src/SharedKernel/Infrastructure/EventSystem/SqsAsync*
+                - src/SharedKernel/Infrastructure/Logger/MonologLogger.php
+                - src/SharedKernel/Infrastructure/Storage/S3*
+        -
+            message: '#Psr\\Http\\Message\\StreamInterface#'
+        -
+            message: '#GuzzleHttp\\#'
+        -
+            message: '#\(bool\|int\|Redis\)#'
+        # PHPUnit mock methods on typed properties
+        # PHPStan-phpunit only recognises mocks from $this->createMock() inline,
+        # not when stored to a typed property first
+        -
+            message: '#Call to an undefined method .+::(method|expects|willReturn)\(\)#'
+            paths:
+                - tests
+        -
+            message: '#expects .+, PHPUnit\\Framework\\MockObject\\MockObject given#'
+            paths:
+                - tests
+        -
+            message: '#expects class-string<.+>, string given#'
+            paths:
+                - tests
+    reportUnmatchedIgnoredErrors: false

@@ -22,6 +22,8 @@ stop:
 	docker compose stop
 lint:
 	docker compose run --rm fuelphp backend/vendor/bin/phpcs --standard=backend/phpcs.xml backend
+phpstan:
+	docker compose run --rm fuelphp backend/vendor/bin/phpstan analyse -c backend/phpstan.neon
 test-unit:
 	docker compose run --rm fuelphp backend/vendor/bin/phpunit backend/tests
 dns-mapping:
