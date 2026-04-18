@@ -31,6 +31,9 @@ return array(
 	 */
 
 	'_404_' => 'welcome/404',
+	'_429_' => function () {
+		return Response::forge('Too many requests. Please try again later.', 429);
+	},
 
 	/**
 	 * -------------------------------------------------------------------------

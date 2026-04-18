@@ -186,6 +186,10 @@ catch (HttpNotFoundException $e)
 {
 	$response = $routerequest('_404_', $e);
 }
+catch (HttpTooManyRequestsException $e)
+{
+	$response = $routerequest('_429_', $e);
+}
 catch (HttpServerErrorException $e)
 {
 	$response = $routerequest('_500_', $e);
