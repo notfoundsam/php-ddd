@@ -146,6 +146,15 @@ class PhpRedisClient implements RedisClientInterface
         }
     }
 
+    public function expire(string $key, int $ttl): bool
+    {
+        try {
+            return $this->client->expire($key, $ttl);
+        } catch (RedisException $e) {
+            throw RedisConnectionException::operationFailed('EXPIRE', $e->getMessage());
+        }
+    }
+
     public function setnx(string $key, string $value, int $ttl = 0): bool
     {
         try {

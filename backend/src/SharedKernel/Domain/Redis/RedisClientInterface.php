@@ -93,6 +93,15 @@ interface RedisClientInterface
     public function setnx(string $key, string $value, int $ttl = 0): bool;
 
     /**
+     * Set a timeout on key
+     * @param string $key The key to set expiry on
+     * @param int $ttl Time to live in seconds
+     * @return bool True if timeout was set, false if key does not exist
+     * @throws RedisConnectionException
+     */
+    public function expire(string $key, int $ttl): bool;
+
+    /**
      * Get value by key from master (write) node only
      * Use this for operations requiring strong consistency
      * @throws RedisConnectionException
