@@ -3,6 +3,8 @@
 # Define domains to map
 DOMAINS=(
   "php-ddd.test"
+  "admin.php-ddd.test"
+  "partner.php-ddd.test"
   "images.php-ddd.test"
   "mail.php-ddd.test"
   "dashboard.php-ddd.test"
