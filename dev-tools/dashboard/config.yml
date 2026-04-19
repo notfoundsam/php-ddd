@@ -63,6 +63,22 @@ services:
         url: "https://php-ddd.test"
         target: "_blank"
 
+      - name: "Admin Panel"
+        icon: "fas fa-shield-alt"
+        subtitle: "Admin Module (IP Restricted)"
+        tag: "admin"
+        keywords: "admin panel management"
+        url: "https://admin.php-ddd.test"
+        target: "_blank"
+
+      - name: "Partner Portal"
+        icon: "fas fa-handshake"
+        subtitle: "Partner Module"
+        tag: "partner"
+        keywords: "partner portal"
+        url: "https://partner.php-ddd.test"
+        target: "_blank"
+
       - name: "Images CDN"
         icon: "fas fa-images"
         subtitle: "Image Assets Only"

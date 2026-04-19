@@ -2214,6 +2214,8 @@ private function generateMockToken(string $userId, string $email): string
 
 **Purpose**: Represents an authenticated user with core identity information and flexible profile metadata.
 
+**Note**: `AuthenticatedUser` now includes a `$type` field (added for throttle system integration). The `type` field uses `UserType` constants (`admin`, `partner`, `customer`) to identify the user category. This is used by the CQRS throttle decorator to resolve per-user-type rate limits. `SecurityContextInterface` has also been implemented at `Domain/Security/SecurityContextInterface.php`.
+
 **Class Definition**:
 ```php
 class AuthenticatedUser
@@ -2222,6 +2224,7 @@ class AuthenticatedUser
         private string $id,
         private string $email,
         private array $roles,
+        private string $type = UserType::CUSTOMER,
         private array $profileMetadata = []
     ) {}
     
@@ -2229,6 +2232,7 @@ class AuthenticatedUser
     public function getId(): string { return $this->id; }
     public function getEmail(): string { return $this->email; }
     public function getRoles(): array { return $this->roles; }
+    public function getType(): string { return $this->type; }
     
     // Profile metadata methods
     public function getProfileMetadata(): array { return $this->profileMetadata; }

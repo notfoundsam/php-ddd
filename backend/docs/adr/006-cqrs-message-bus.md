@@ -165,5 +165,5 @@ A missing handler is a programmer error (misconfigured registry), not a runtime 
 ### Open Items
 - Transaction decorator for command bus — wraps handler execution in a database transaction
 - Cache decorator for query bus — caches responses by query identity
-- Throttle decorator — rate limits bus dispatches
+- ~~Throttle decorator — rate limits bus dispatches~~ → ADR-007
 - Integration with event system (ADR-005) — command handler decorator to collect domain events from aggregates and store in outbox atomically

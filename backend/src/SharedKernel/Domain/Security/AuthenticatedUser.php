@@ -13,11 +13,17 @@ final class AuthenticatedUser
     /** @var array<string> */
     private array $roles;
 
-    public function __construct(string $id, string $email, array $roles = [])
+    private string $type;
+
+    /**
+     * @param array<string> $roles
+     */
+    public function __construct(string $id, string $email, array $roles = [], string $type = UserType::CUSTOMER)
     {
         $this->id = $id;
         $this->email = $email;
         $this->roles = $roles;
+        $this->type = $type;
     }
 
     public function getId(): string
@@ -33,5 +39,10 @@ final class AuthenticatedUser
     public function getRoles(): array
     {
         return $this->roles;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
     }
 }

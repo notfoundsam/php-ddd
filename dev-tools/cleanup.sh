@@ -13,6 +13,8 @@ HOSTS_FILE="/etc/hosts"
 # List of domains to remove
 DOMAINS=(
   "php-ddd.test"
+  "admin.php-ddd.test"
+  "partner.php-ddd.test"
   "images.php-ddd.test"
   "mail.php-ddd.test"
   "dashboard.php-ddd.test"

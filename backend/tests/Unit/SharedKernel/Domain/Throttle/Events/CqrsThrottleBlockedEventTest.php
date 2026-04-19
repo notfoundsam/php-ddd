@@ -1,0 +1,83 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\SharedKernel\Domain\Throttle\Events;
+
+use PHPUnit\Framework\TestCase;
+use SharedKernel\Domain\Security\UserType;
+use SharedKernel\Domain\Throttle\Events\CqrsThrottleBlockedEvent;
+
+class CqrsThrottleBlockedEventTest extends TestCase
+{
+    public function testCreateWithAllFields(): void
+    {
+        $event = CqrsThrottleBlockedEvent::create(
+            'command',
+            'CreateOrderCommand',
+            'user:42',
+            300,
+            '192.168.1.100',
+            UserType::CUSTOMER
+        );
+
+        $this->assertSame('command', $event->getMessageType());
+        $this->assertSame('CreateOrderCommand', $event->getMessageClass());
+        $this->assertSame('user:42', $event->getIdentifier());
+        $this->assertSame(300, $event->getRetryAfter());
+        $this->assertSame('192.168.1.100', $event->getClientIp());
+        $this->assertSame(UserType::CUSTOMER, $event->getUserType());
+    }
+
+    public function testCreateWithNullUserTypeForAnonymous(): void
+    {
+        $event = CqrsThrottleBlockedEvent::create(
+            'query',
+            'SearchQuery',
+            'ip:10.0.0.1',
+            600,
+            '10.0.0.1',
+            null
+        );
+
+        $this->assertNull($event->getUserType());
+        $this->assertSame('10.0.0.1', $event->getClientIp());
+    }
+
+    public function testSerializeDeserializeRoundtrip(): void
+    {
+        $event = CqrsThrottleBlockedEvent::create(
+            'command',
+            'ContactFormCommand',
+            'ip:192.168.1.50',
+            3600,
+            '192.168.1.50',
+            null
+        );
+
+        $serialized = $event->serialize();
+        $restored = CqrsThrottleBlockedEvent::fromPayload($serialized);
+
+        $this->assertSame($event->getMessageType(), $restored->getMessageType());
+        $this->assertSame($event->getMessageClass(), $restored->getMessageClass());
+        $this->assertSame($event->getIdentifier(), $restored->getIdentifier());
+        $this->assertSame($event->getRetryAfter(), $restored->getRetryAfter());
+        $this->assertSame($event->getClientIp(), $restored->getClientIp());
+        $this->assertSame($event->getUserType(), $restored->getUserType());
+    }
+
+    public function testFromPayloadWithMissingNewFieldsBackwardCompatible(): void
+    {
+        $payload = [
+            'message_type' => 'command',
+            'message_class' => 'OldCommand',
+            'identifier' => 'user:1',
+            'retry_after' => 300,
+        ];
+
+        $event = CqrsThrottleBlockedEvent::fromPayload($payload);
+
+        $this->assertSame('', $event->getClientIp());
+        $this->assertNull($event->getUserType());
+    }
+}

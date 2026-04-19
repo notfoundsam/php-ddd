@@ -110,6 +110,11 @@ class ReadWriteRedisClient implements RedisClientInterface
         return $this->writeClient->incr($key);
     }
 
+    public function expire(string $key, int $ttl): bool
+    {
+        return $this->writeClient->expire($key, $ttl);
+    }
+
     public function setnx(string $key, string $value, int $ttl = 0): bool
     {
         return $this->writeClient->setnx($key, $value, $ttl);
