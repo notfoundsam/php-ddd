@@ -16,7 +16,6 @@ final class ThrottleConfigDefaults
         return [
             'defaults' => [
                 UserType::ADMIN => null,
-                UserType::SYSTEM => null,
                 UserType::PARTNER => [
                     'warning_limit' => 100,
                     'block_limit' => 200,

@@ -9,7 +9,6 @@ final class UserType
     public const ADMIN = 'admin';
     public const PARTNER = 'partner';
     public const CUSTOMER = 'customer';
-    public const SYSTEM = 'system';
     public const ANONYMOUS = 'anonymous';
 
     /** @var array<string> */
@@ -17,7 +16,6 @@ final class UserType
         self::ADMIN,
         self::PARTNER,
         self::CUSTOMER,
-        self::SYSTEM,
         self::ANONYMOUS,
     ];
 
