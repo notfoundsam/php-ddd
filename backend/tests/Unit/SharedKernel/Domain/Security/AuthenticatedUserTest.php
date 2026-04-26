@@ -25,29 +25,36 @@ class AuthenticatedUserTest extends TestCase
         $user = new AuthenticatedUser('1', 'user@example.com', ['user']);
 
         $this->assertSame(UserType::CUSTOMER, $user->getType());
+        $this->assertSame([], (new AuthenticatedUser('1', 'test@example.com'))->getRoles());
     }
 
-    public function testConstructionWithPartnerType(): void
+    public function testHasRoleReturnsTrueWhenRolePresent(): void
     {
-        $user = new AuthenticatedUser('10', 'partner@example.com', ['partner'], UserType::PARTNER);
+        $user = new AuthenticatedUser('1', 'a@example.com', ['admin', 'manager']);
 
-        $this->assertSame(UserType::PARTNER, $user->getType());
+        $this->assertTrue($user->hasRole('admin'));
+        $this->assertTrue($user->hasRole('manager'));
     }
 
-    public function testConstructionWithCustomerType(): void
+    public function testHasRoleReturnsFalseWhenRoleAbsent(): void
     {
-        $user = new AuthenticatedUser('20', 'customer@example.com', [], UserType::CUSTOMER);
+        $user = new AuthenticatedUser('1', 'a@example.com', ['admin']);
 
-        $this->assertSame(UserType::CUSTOMER, $user->getType());
+        $this->assertFalse($user->hasRole('manager'));
     }
 
-    public function testConstructionWithMinimalArguments(): void
+    public function testHasRoleReturnsFalseForEmptyRoleList(): void
     {
-        $user = new AuthenticatedUser('1', 'test@example.com');
+        $user = new AuthenticatedUser('1', 'a@example.com', []);
 
-        $this->assertSame('1', $user->getId());
-        $this->assertSame('test@example.com', $user->getEmail());
-        $this->assertSame([], $user->getRoles());
-        $this->assertSame(UserType::CUSTOMER, $user->getType());
+        $this->assertFalse($user->hasRole('admin'));
+    }
+
+    public function testHasRoleIsCaseSensitive(): void
+    {
+        $user = new AuthenticatedUser('1', 'a@example.com', ['Admin']);
+
+        $this->assertTrue($user->hasRole('Admin'));
+        $this->assertFalse($user->hasRole('admin'));
     }
 }

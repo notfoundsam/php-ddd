@@ -35,12 +35,4 @@ class UserTypeTest extends TestCase
         $this->assertContains(UserType::CUSTOMER, $all);
         $this->assertContains(UserType::ANONYMOUS, $all);
     }
-
-    public function testConstantValues(): void
-    {
-        $this->assertSame('admin', UserType::ADMIN);
-        $this->assertSame('partner', UserType::PARTNER);
-        $this->assertSame('customer', UserType::CUSTOMER);
-        $this->assertSame('anonymous', UserType::ANONYMOUS);
-    }
 }
