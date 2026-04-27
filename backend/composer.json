@@ -1,10 +1,11 @@
 {
   "name": "app/backend",
-  "description": "Domain layer with bounded contexts",
+  "description": "Domain layer with bounded contexts and audience modules",
   "type": "library",
   "license": "proprietary",
   "autoload": {
     "psr-4": {
+      "Audience\\": "src/Audience/",
       "Crm\\": "src/Crm/",
       "Marketing\\": "src/Marketing/",
       "SharedKernel\\": "src/SharedKernel/"

@@ -5,12 +5,12 @@
 
 ## Context
 
-The system needs rate limiting at two levels: HTTP-level flood protection for anonymous traffic, and CQRS-level throttling for authenticated users and specific public endpoints. The CQRS throttle must support different limits per user type (admin, partner, customer, system worker), per-command/query overrides, progressive penalties for repeat offenders, and fail-open behavior when the storage backend is unavailable. The implementation must be framework-agnostic (PHP 7.4 compatible in `backend/src/`) for the CQRS layer, integrate with the existing CQRS decorator chain (ADR-006), and support the ongoing FuelPHP-to-Laravel migration.
+The system needs rate limiting at two levels: HTTP-level flood protection for anonymous traffic, and CQRS-level throttling for authenticated users and specific public endpoints. The CQRS throttle must support different limits per user type (admin, partner, customer), per-command/query overrides, progressive penalties for repeat offenders, and fail-open behavior when the storage backend is unavailable. The implementation must be framework-agnostic (PHP 7.4 compatible in `backend/src/`) for the CQRS layer, integrate with the existing CQRS decorator chain (ADR-006), and support the ongoing FuelPHP-to-Laravel migration.
 
 Key requirements:
 - HTTP layer: broad IP-based throttle for anonymous users, framework-specific
 - CQRS layer: rate limit authenticated users by user type + ID, with per-command overrides for both authenticated and anonymous
-- Different default limits per user type — admins and system workers exempt
+- Different default limits per user type — admins exempt
 - Progressive penalties that escalate block duration on repeated violations
 - Fail-open on storage driver failure — never block legitimate traffic due to infrastructure issues
 - No coupling between commands/queries and throttle configuration
@@ -71,16 +71,16 @@ Identity resolution was initially on the command, but this was moved to the deco
 
 ### User Types, Not Roles
 
-Throttle limits are keyed by user type (`UserType::ADMIN`, `PARTNER`, `CUSTOMER`, `SYSTEM`, `ANONYMOUS`), not by role. User type represents which authentication provider/table the user comes from — it's a fixed identity characteristic, not a permission grant. One user has exactly one type. `AuthenticatedUser` was extended with a `$type` field (defaulting to `UserType::CUSTOMER` for backward compatibility) to carry this information through the security context.
+Throttle limits are keyed by user type (`UserType::ADMIN`, `PARTNER`, `CUSTOMER`, `ANONYMOUS`), not by role. User type represents which authentication provider/table the user comes from — it's a fixed identity characteristic, not a permission grant. One user has exactly one type. `AuthenticatedUser` was extended with a `$type` field (defaulting to `UserType::CUSTOMER` for backward compatibility) to carry this information through the security context.
 
 Roles were considered but rejected because:
 - A user with multiple roles (`['user', 'manager']`) would need conflict resolution — which role's limits apply?
 - Roles are about authorization (what you can do), not identity (who you are)
 - The admin panel, partner portal, and customer portal are separate authentication contexts with separate tables — user type naturally maps to this
 
-`UserType::SYSTEM` was added for background workers and batch operations. Workers set a system-level `AuthenticatedUser` in `SecurityContextInterface` at bootstrap. The config exempts `SYSTEM` with `null` defaults, so workers are never throttled. This avoids maintaining exclusion lists of worker commands and works with the shared DI container (no separate config for workers).
-
 `UserType::ANONYMOUS` is a config-only concept — it represents the absence of an authenticated user. It's included in `UserType` constants so the config key space is consistent and validatable.
+
+Background event workers (ADR-005) process events through their own dispatch path and never enter the CQRS bus, so they bypass the throttle decorator entirely. No worker-specific user type is required.
 
 ### Decorator Chain Order
 
@@ -174,7 +174,7 @@ The user type prefix in the identifier (`customer:42` vs `partner:42`) ensures u
 | `ThrottleConfigException` | Domain | Invalid configuration values |
 | `CqrsThrottleWarningEvent` | Domain | Async event: warning threshold crossed |
 | `CqrsThrottleBlockedEvent` | Domain | Async event: request blocked |
-| `UserType` | Domain | Constants: ADMIN, PARTNER, CUSTOMER, SYSTEM, ANONYMOUS |
+| `UserType` | Domain | Constants: ADMIN, PARTNER, CUSTOMER, ANONYMOUS |
 | `SecurityContextInterface` | Domain | Request-scoped user identity |
 | `ThrottleConfigResolverInterface` | Application | Contract: resolve config by command class and user type |
 | `RequestContextInterface` | Application | Client IP address |
@@ -203,6 +203,6 @@ The user type prefix in the identifier (`customer:42` vs `partner:42`) ensures u
 - Anonymous protection is split across two layers — requires coordinating HTTP and CQRS throttle configs
 - Config resolution has multiple fallback steps — debugging "which config was applied?" requires understanding the chain
 - `UserType::ANONYMOUS` is not a real user type but is included in constants for config key consistency
-- New commands get throttled by defaults automatically — no opt-in required, which could surprise developers adding internal commands (mitigation: use `excluded` list or `SYSTEM` user type for workers)
+- New commands get throttled by defaults automatically — no opt-in required, which could surprise developers adding internal commands (mitigation: use the `excluded` list)
 - `ThrottleConfigDefaults` is a static config class, not a file-based config — changing defaults requires a code deploy, not a config file change
 - HTTP layer throttle is framework-specific — each framework (FuelPHP, Laravel) needs its own implementation

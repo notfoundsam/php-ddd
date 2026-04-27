@@ -14,7 +14,6 @@ class UserTypeTest extends TestCase
         $this->assertTrue(UserType::isValid(UserType::ADMIN));
         $this->assertTrue(UserType::isValid(UserType::PARTNER));
         $this->assertTrue(UserType::isValid(UserType::CUSTOMER));
-        $this->assertTrue(UserType::isValid(UserType::SYSTEM));
         $this->assertTrue(UserType::isValid(UserType::ANONYMOUS));
     }
 
@@ -23,26 +22,17 @@ class UserTypeTest extends TestCase
         $this->assertFalse(UserType::isValid('superadmin'));
         $this->assertFalse(UserType::isValid(''));
         $this->assertFalse(UserType::isValid('ADMIN'));
+        $this->assertFalse(UserType::isValid('system'));
     }
 
     public function testGetAllReturnsAllDefinedTypes(): void
     {
         $all = UserType::getAll();
 
-        $this->assertCount(5, $all);
+        $this->assertCount(4, $all);
         $this->assertContains(UserType::ADMIN, $all);
         $this->assertContains(UserType::PARTNER, $all);
         $this->assertContains(UserType::CUSTOMER, $all);
-        $this->assertContains(UserType::SYSTEM, $all);
         $this->assertContains(UserType::ANONYMOUS, $all);
-    }
-
-    public function testConstantValues(): void
-    {
-        $this->assertSame('admin', UserType::ADMIN);
-        $this->assertSame('partner', UserType::PARTNER);
-        $this->assertSame('customer', UserType::CUSTOMER);
-        $this->assertSame('system', UserType::SYSTEM);
-        $this->assertSame('anonymous', UserType::ANONYMOUS);
     }
 }

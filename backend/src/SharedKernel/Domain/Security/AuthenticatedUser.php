@@ -41,6 +41,11 @@ final class AuthenticatedUser
         return $this->roles;
     }
 
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->roles, true);
+    }
+
     public function getType(): string
     {
         return $this->type;

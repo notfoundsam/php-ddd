@@ -8,6 +8,7 @@ install:
 build:
 	docker compose build
 composer-autoload:
+	docker compose run --rm fuelphp composer -d backend dump-autoload
 	docker compose run --rm fuelphp composer -d fuelphp dump-autoload
 	docker compose run --rm laravel composer -d laravel dump-autoload
 up:

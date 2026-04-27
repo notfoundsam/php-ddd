@@ -1,10 +1,13 @@
 <?php
 
+use Audience\Admin\Infrastructure\Security\AdminSecurityConfigRegistry;
+use Audience\Partner\Infrastructure\Security\PartnerSecurityConfigRegistry;
 use DI\ContainerBuilder;
 use Fuel\Core\Fuel;
 use Infrastructure\EventSystem\FuelPhpOutboxRepository;
 use Infrastructure\EventSystem\FuelPhpScheduledEventRepository;
 use Infrastructure\Http\FuelPhpRequestContext;
+use Infrastructure\Security\FuelPhpAuthUserResolver;
 use Infrastructure\Security\FuelPhpSecurityContext;
 use Psr\Container\ContainerInterface;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
@@ -22,7 +25,10 @@ use SharedKernel\Domain\EventSystem\OutboxEventProcessorInterface;
 use SharedKernel\Domain\EventSystem\ScheduledEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Redis\RedisClientInterface;
+use SharedKernel\Domain\Security\AuthorizationServiceInterface;
+use SharedKernel\Domain\Security\SecurityConfigInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
+use SharedKernel\Domain\Security\UserResolverInterface;
 use SharedKernel\Domain\Storage\StorageInterface;
 use SharedKernel\Domain\Throttle\ThrottleFactoryInterface;
 use SharedKernel\Infrastructure\Cache\CacheFactory;
@@ -32,7 +38,11 @@ use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\CommandThrottleDecorat
 use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\CommandTransactionDecorator;
 use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\QueryLoggerDecorator;
 use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\QueryThrottleDecorator;
+use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\SecurityCommandDecorator;
+use SharedKernel\Infrastructure\CqrsMessageBus\Decorators\SecurityQueryDecorator;
 use SharedKernel\Infrastructure\CqrsMessageBus\QueryBusFactory;
+use SharedKernel\Infrastructure\Security\ConfigAuthorizationService;
+use SharedKernel\Infrastructure\Security\SecurityConfigFactory;
 use SharedKernel\Infrastructure\EventSystem\DomainEventCollector;
 use SharedKernel\Infrastructure\EventSystem\EventFactoryFactory;
 use SharedKernel\Infrastructure\EventSystem\ListenerProviderFactory;
@@ -71,6 +81,20 @@ $containerBuilder->addDefinitions(array_merge([
     // Security & Request Context
     SecurityContextInterface::class => DI\autowire(FuelPhpSecurityContext::class),
     RequestContextInterface::class => DI\autowire(FuelPhpRequestContext::class),
+    UserResolverInterface::class => DI\autowire(FuelPhpAuthUserResolver::class),
+
+    // Security Config — composed from SharedKernel + per-audience registries.
+    // Bounded contexts (Crm, Marketing) own only domain. Audiences (Admin, Partner, Customer)
+    // own their commands, queries, and roles. Add new audience registries here.
+    SecurityConfigInterface::class => DI\factory(function (ContainerInterface $c) {
+        $factory = new SecurityConfigFactory([
+            $c->get(AdminSecurityConfigRegistry::class),
+            $c->get(PartnerSecurityConfigRegistry::class),
+        ]);
+        return $factory();
+    }),
+    // Depends on SecurityConfigInterface (bound via factory above).
+    AuthorizationServiceInterface::class => DI\autowire(ConfigAuthorizationService::class),
 
     // Throttle
     ThrottleFactoryInterface::class => DI\factory(ThrottleDriverFactory::class),
@@ -79,7 +103,7 @@ $containerBuilder->addDefinitions(array_merge([
     }),
 
     // CQRS Message Bus
-    // Decorator chain (outermost → innermost): Throttle → Logger → Transaction → Handler
+    // Decorator chain (outermost → innermost): Throttle → Security → Logger → Transaction → Handler
     CommandBusInterface::class => DI\factory(function (ContainerInterface $c) {
         $bus = (new CommandBusFactory($c, [
             // Add bounded-context registries here:
@@ -93,6 +117,12 @@ $containerBuilder->addDefinitions(array_merge([
             $c->get(OutboxEventProcessorInterface::class)
         );
         $bus = new CommandLoggerDecorator($bus, $c->get(LoggerInterface::class));
+        $bus = new SecurityCommandDecorator(
+            $bus,
+            $c->get(SecurityContextInterface::class),
+            $c->get(AuthorizationServiceInterface::class),
+            $c->get(SecurityConfigInterface::class)
+        );
         return new CommandThrottleDecorator(
             $bus,
             $c->get(ThrottleFactoryInterface::class),
@@ -103,6 +133,7 @@ $containerBuilder->addDefinitions(array_merge([
             $c->get(LoggerInterface::class)
         );
     }),
+    // Decorator chain (outermost → innermost): Throttle → Security → Logger → Handler
     QueryBusInterface::class => DI\factory(function (ContainerInterface $c) {
         $bus = (new QueryBusFactory($c, [
             // Add bounded-context registries here:
@@ -110,6 +141,12 @@ $containerBuilder->addDefinitions(array_merge([
             // new MarketingQueryHandlerRegistry(),
         ]))();
         $bus = new QueryLoggerDecorator($bus, $c->get(LoggerInterface::class));
+        $bus = new SecurityQueryDecorator(
+            $bus,
+            $c->get(SecurityContextInterface::class),
+            $c->get(AuthorizationServiceInterface::class),
+            $c->get(SecurityConfigInterface::class)
+        );
         return new QueryThrottleDecorator(
             $bus,
             $c->get(ThrottleFactoryInterface::class),
