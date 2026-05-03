@@ -4,6 +4,8 @@
 	<meta charset="utf-8">
 	<title>FuelPHP Framework</title>
 	<?php echo Asset::css('bootstrap.css'); ?>
+	<?= Vite::asset('src/site/core.js') ?>
+	<?= Vite::asset('src/site/pages/search.js') ?>
 	<style>
 		#logo{
 			display: block;
