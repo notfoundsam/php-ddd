@@ -18,7 +18,8 @@ class Vite
         $manifest = self::loadManifest();
         $tags = '';
         foreach (self::collectStylesheets($manifest, $entry) as $cssFile) {
-            $tags .= '<link rel="stylesheet" href="' . self::buildUrl($cssFile) . '">' . "\n";
+            $href = htmlspecialchars(self::buildUrl($cssFile), ENT_QUOTES, 'UTF-8');
+            $tags .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
         }
         return $tags;
     }
@@ -29,8 +30,8 @@ class Vite
         if (!isset($manifest[$entry])) {
             throw new RuntimeException('Vite manifest entry not found: ' . $entry);
         }
-        $jsFile = $manifest[$entry]['file'];
-        return '<script type="module" src="' . self::buildUrl($jsFile) . '"></script>' . "\n";
+        $src = htmlspecialchars(self::buildUrl($manifest[$entry]['file']), ENT_QUOTES, 'UTF-8');
+        return '<script type="module" src="' . $src . '"></script>' . "\n";
     }
 
     public static function setConfigForTesting(array $config): void

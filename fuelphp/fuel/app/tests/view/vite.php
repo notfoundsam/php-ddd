@@ -117,4 +117,22 @@ class Test_Vite extends TestCase
 
         $this->assertStringContainsString('/static/v2/assets/core-AbCdEf12.js', $output);
     }
+
+    public function test_attribute_special_chars_in_filenames_are_html_escaped()
+    {
+        Vite::setConfigForTesting([
+            'manifest_path' => $this->fixtureManifest,
+            'build_path' => '/build',
+        ]);
+
+        $output = Vite::asset('src/evil/entry.js');
+
+        // Raw injection characters must not appear unescaped
+        $this->assertStringNotContainsString('"><script>', $output);
+        $this->assertStringNotContainsString('"><x>', $output);
+        // Escaped form must be present
+        $this->assertStringContainsString('&quot;', $output);
+        $this->assertStringContainsString('&gt;', $output);
+        $this->assertStringContainsString('&lt;', $output);
+    }
 }

@@ -31,5 +31,14 @@
         "name": "admin",
         "src": "src/admin/main.js",
         "isEntry": true
+    },
+    "src/evil/entry.js": {
+        "file": "assets/evil\"><script>alert(1)</script>.js",
+        "name": "evil",
+        "src": "src/evil/entry.js",
+        "isEntry": true,
+        "css": [
+            "assets/evil\"><x>.css"
+        ]
     }
 }
