@@ -5,6 +5,11 @@ install:
 	docker compose run --rm fuelphp composer -d backend install
 	docker compose run --rm fuelphp composer -d fuelphp install
 	docker compose run --rm laravel composer -d laravel install
+	@$(MAKE) frontend-install
+frontend-install:
+	docker compose run --rm frontend npm install --no-audit --no-fund
+frontend-build:
+	docker compose run --rm frontend npm run build
 build:
 	docker compose build
 composer-autoload:
@@ -27,6 +32,7 @@ phpstan:
 	docker compose run --rm fuelphp backend/vendor/bin/phpstan analyse -c backend/phpstan.neon
 test-unit:
 	docker compose run --rm fuelphp backend/vendor/bin/phpunit backend/tests
+	docker compose run --rm --workdir /app/fuelphp/fuel/core fuelphp /app/backend/vendor/bin/phpunit -c phpunit.xml --testsuite app
 dns-mapping:
 	./dev-tools/dns-mapping.sh
 setup-ssl:
