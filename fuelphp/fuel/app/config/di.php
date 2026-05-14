@@ -7,6 +7,7 @@ use Fuel\Core\Fuel;
 use Infrastructure\EventSystem\FuelPhpOutboxRepository;
 use Infrastructure\EventSystem\FuelPhpScheduledEventRepository;
 use Infrastructure\Http\FuelPhpRequestContext;
+use Infrastructure\Notification\FuelPhpEmailNotifier;
 use Infrastructure\Security\FuelPhpAuthUserResolver;
 use Infrastructure\Security\FuelPhpSecurityContext;
 use Psr\Container\ContainerInterface;
@@ -24,6 +25,8 @@ use SharedKernel\Domain\EventSystem\ListenerProviderInterface;
 use SharedKernel\Domain\EventSystem\OutboxEventProcessorInterface;
 use SharedKernel\Domain\EventSystem\ScheduledEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
+use SharedKernel\Domain\Notification\Channel\EmailNotifierInterface;
+use SharedKernel\Domain\Notification\Channel\SmsNotifierInterface;
 use SharedKernel\Domain\Redis\RedisClientInterface;
 use SharedKernel\Domain\Security\AuthorizationServiceInterface;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
@@ -50,6 +53,8 @@ use SharedKernel\Infrastructure\EventSystem\OutboxEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\ScheduledEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
 use SharedKernel\Infrastructure\Logger\LoggerFactory;
+use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
+use Infrastructure\Notification\SmsNotifierFactory;
 use SharedKernel\Infrastructure\Redis\RedisClientFactory;
 use SharedKernel\Infrastructure\Storage\CdnUrlResolver;
 use SharedKernel\Infrastructure\Storage\StorageFactory;
@@ -187,6 +192,13 @@ $containerBuilder->addDefinitions(array_merge([
         getenv('AWS_REGION') ?: ''
     ),
     AsyncEventProcessorInterface::class => DI\factory(SqsAsyncEventProcessorFactory::class),
+
+    // Notification
+    SenderRegistry::class => DI\autowire(SenderRegistry::class)->constructor(
+        getenv('EMAIL_DOMAIN') ?: 'php-ddd.test'
+    ),
+    EmailNotifierInterface::class => DI\autowire(FuelPhpEmailNotifier::class),
+    SmsNotifierInterface::class => DI\factory(SmsNotifierFactory::class),
 ]), $repositories);
 
 return $containerBuilder->build();
