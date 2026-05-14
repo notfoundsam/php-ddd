@@ -12,6 +12,14 @@ x-shared-env: &shared-env
   REDIS_READER_ENDPOINT: redis
   # CDN settings
   CDN_IMAGES_URL: https://images.php-ddd.test
+  # Email
+  EMAIL_DOMAIN: php-ddd.test
+  # SMS (Twilio) — TWILIO_API_BASE_URL routes to the local sms-mock-server in dev
+  TWILIO_API_BASE_URL: http://sms:8080
+  TWILIO_ACCOUNT_SID: ACdevelopmentaccountsidplaceholder
+  TWILIO_AUTH_TOKEN: development-auth-token
+  TWILIO_SMS_FROM: "+15005550006"
+  TWILIO_CALLBACK_URL: ""
 
 services:
   traefik:
@@ -66,6 +74,31 @@ services:
       - "traefik.http.routers.mail-http.rule=Host(`mail.php-ddd.test`)"
       - "traefik.http.routers.mail-http.entrypoints=web"
       - "traefik.http.routers.mail-http.middlewares=redirect-to-https"
+  sms:
+    image: notfoundsam/sms-mock-server:3.0.1
+    environment:
+      - SMS_MOCK_PORT=8080
+      - SMS_MOCK_TIMEZONE=Asia/Tokyo
+      - SMS_MOCK_DB_PATH=/data/mock_server.db
+      - SMS_MOCK_PROVIDER=twilio
+      - SMS_MOCK_MAX_MESSAGES=500
+      - SMS_MOCK_TWILIO_ACCOUNT_SID=ACdevelopmentaccountsidplaceholder
+      - SMS_MOCK_TWILIO_AUTH_TOKEN=development-auth-token
+      - SMS_MOCK_TWILIO_ALLOWED_FROM_NUMBERS=+15005550006
+    volumes:
+      - php-ddd-sms:/data
+    networks:
+      - php-ddd
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sms.rule=Host(`sms.php-ddd.test`)"
+      - "traefik.http.routers.sms.entrypoints=websecure"
+      - "traefik.http.routers.sms.tls=true"
+      - "traefik.http.services.sms.loadbalancer.server.port=8080"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.sms-http.rule=Host(`sms.php-ddd.test`)"
+      - "traefik.http.routers.sms-http.entrypoints=web"
+      - "traefik.http.routers.sms-http.middlewares=redirect-to-https"
   redis:
     image: redis:7.4.2
     networks:
@@ -137,6 +170,7 @@ services:
       - redis
       - db
       - mail
+      - sms
 
   laravel:
     build:
@@ -161,6 +195,7 @@ services:
       - redis
       - db
       - mail
+      - sms
 
   frontend:
     image: node:20-alpine
@@ -218,3 +253,4 @@ networks:
 volumes:
   php-ddd-db:
   php-ddd-frontend-node-modules:
+  php-ddd-sms:
