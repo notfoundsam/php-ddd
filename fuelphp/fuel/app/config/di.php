@@ -65,7 +65,7 @@ use SharedKernel\Infrastructure\Throttle\ThrottleDriverFactory;
 $containerBuilder = new ContainerBuilder();
 $repositories = require APPPATH . 'config/repositories.php';
 
-if (Fuel::$env !== Fuel::DEVELOPMENT) {
+if (Fuel::$env !== Fuel::DEVELOPMENT && Fuel::$env !== Fuel::TEST) {
     $containerBuilder->enableCompilation(APPPATH . '/tmp');
     $containerBuilder->writeProxiesToFile(true, APPPATH . '/tmp/proxies');
 }
