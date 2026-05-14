@@ -17,6 +17,7 @@ DOMAINS=(
   "partner.php-ddd.test"
   "images.php-ddd.test"
   "mail.php-ddd.test"
+  "sms.php-ddd.test"
   "dashboard.php-ddd.test"
 )
 
