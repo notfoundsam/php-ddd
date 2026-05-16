@@ -29,4 +29,5 @@ desktop.ini
 # dynamically generated files
 /fuel/app/logs/*
 /fuel/app/cache/*/*
+!/fuel/app/cache/*/.gitkeep
 /fuel/app/tmp/*

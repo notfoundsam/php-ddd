@@ -1,11 +1,7 @@
-@php
-    $q = \Fuel\Core\Input::get('q');
-    $q = is_string($q) ? $q : '';
-@endphp
 <header class="site-header">
     <a class="site-logo" href="/">Shop</a>
     <form class="site-search" action="/" method="get" role="search">
-        <input type="search" name="q" placeholder="Search products…" value="{{ $q }}">
+        <input type="search" name="q" placeholder="Search products…" value="{{ isset($filters) ? ($filters->getSearchTerm() ?? '') : '' }}">
         <button type="submit">Search</button>
     </form>
     <nav class="site-nav">

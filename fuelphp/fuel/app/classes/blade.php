@@ -39,6 +39,7 @@ class Blade
     public static function respond(string $name, array $data = [], int $status = 200, array $headers = []): \Fuel\Core\Response
     {
         $response = \Fuel\Core\Response::forge(self::render($name, $data), $status);
+        $response->set_header('Content-Type', 'text/html; charset=utf-8');
         foreach ($headers as $key => $value) {
             $response->set_header($key, $value);
         }
@@ -59,8 +60,8 @@ class Blade
             \Fuel\Core\Config::load('blade', true);
             $viewsPath = \Fuel\Core\Config::get('blade.views_path');
             $cachePath = \Fuel\Core\Config::get('blade.cache_path');
-            if (!is_dir($cachePath)) {
-                mkdir($cachePath, 0775, true);
+            if (!is_dir($cachePath) && !mkdir($cachePath, 0775, true) && !is_dir($cachePath)) {
+                throw new \RuntimeException("Blade cache dir not writable: {$cachePath}");
             }
             self::$engine = new BladeEngine($viewsPath, $cachePath);
         }
