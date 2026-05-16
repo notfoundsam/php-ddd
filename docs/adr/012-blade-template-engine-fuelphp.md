@@ -59,7 +59,7 @@ FuelPHP's module-scoped view paths (`modules/admin/views/welcome/index.php`) do 
 - `composer require jenssegers/blade ^1.4` (pulls `illuminate/view ^8.83`; PHP 7.4-compatible).
 - `fuelphp/fuel/app/classes/blade.php` — the standalone facade, ~60 lines. Lazy-builds the engine from `fuelphp/fuel/app/config/blade.php` (`views_path`, `cache_path`).
 - `fuelphp/fuel/app/config/config.php` — `'auto_filter_output' => false` with a comment naming this ADR.
-- `fuelphp/fuel/app/views/` — all `.blade.php`. Compiled-template cache lives in `app/cache/blade/` and is already covered by the existing `/fuel/app/cache/*/*` gitignore rule.
+- `fuelphp/fuel/app/views/` — all `.blade.php`. Compiled-template cache lives in `app/cache/blade/`. The directory is committed via `.gitkeep` so it exists on every deploy from `git clone`; compiled output is ignored via `/fuel/app/cache/*/*` with a negation for the keepfile. The Blade facade also creates the directory on first render as a fallback (throws if `mkdir` fails), but normal deployments rely on the keepfile.
 - Removed: `app/classes/presenter/` directory (Welcome presenters were the only consumers) and all `.php` view files.
 
 ## Consequences
@@ -76,7 +76,7 @@ FuelPHP's module-scoped view paths (`modules/admin/views/welcome/index.php`) do 
 **Negative:**
 
 - One additional Composer dependency tree (`jenssegers/blade` pulls `illuminate/view`, `illuminate/filesystem`, `illuminate/events`, `illuminate/container`, `symfony/finder`, etc.). Pure framework cost is acceptable for the engine we want.
-- Compiled-template cache directory (`app/cache/blade/`) needs to exist and be writable. The Blade facade creates it on first render; the parent (`app/cache/`) must be writable by the PHP process in deployments.
+- Compiled-template cache directory (`app/cache/blade/`) needs to exist and be writable. It is committed via `.gitkeep`, so every deploy from `git clone` has it on disk; the Blade facade also creates it on first render and throws if `mkdir` fails. Either way, the parent `app/cache/` must be writable by the PHP process in deployments.
 - `Fuel\Core\View` is no longer the way to render — any future contributor who copies a FuelPHP tutorial verbatim will write code that fails.
 - `auto_filter_output = false` is now site-wide. The framework-level escape pass that previously caught variables passed through `Fuel\Core\View` is gone. The protection rests entirely on Blade being the only render path: any new path that emits HTML must go through `Blade::render` / `Blade::respond` (or escape manually) — there is no global net behind it.
 
