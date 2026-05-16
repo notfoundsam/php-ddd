@@ -1,3 +1,42 @@
 :root {
-    /* design tokens go here */
+    --bg: #ffffff;
+    --bg-muted: #f3f3f3;
+    --bg-elevated: #ffffff;
+    --fg: #111111;
+    --fg-muted: #555555;
+    --border: #d5d9d9;
+    --border-strong: #888c8c;
+    --accent: #232f3e;
+    --accent-fg: #ffffff;
+    --link: #007185;
+    --link-hover: #c7511f;
+    --price: #0f1111;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --radius: 4px;
+    --max-width: 1400px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-muted);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
 }

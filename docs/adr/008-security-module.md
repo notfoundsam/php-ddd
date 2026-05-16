@@ -38,7 +38,7 @@ A two-bus split (one secured bus, one public bus) was considered and rejected. M
 
 ### Per-Audience Configs Composed via Registry
 
-Each audience owns a `SecurityConfigInterface` implementation declaring its commands, queries, and roles. Audiences live under `backend/src/Audience/` (`Audience\Admin\…`, `Audience\Partner\…`, future `Audience\Customer\…`). Configs are composed at DI wiring time via a `SecurityConfigRegistryInterface` (mirrors `CommandHandlerRegistryInterface` from ADR-006). A `CompositeSecurityConfig` merges entries; duplicate command/query keys throw at first lookup; role permissions union and de-duplicate.
+Each audience owns a `SecurityConfigInterface` implementation declaring its commands, queries, and roles. Audiences live under `backend/src/Audience/` (`Audience\Admin\…`, `Audience\Partner\…`, public `Audience\Site\…`). Configs are composed at DI wiring time via a `SecurityConfigRegistryInterface` (mirrors `CommandHandlerRegistryInterface` from ADR-006). A `CompositeSecurityConfig` merges entries; duplicate command/query keys throw at first lookup; role permissions union and de-duplicate.
 
 Bounded contexts (`backend/src/Crm/`, `backend/src/Marketing/`) own **only domain code** — aggregates, domain events, repositories interfaces. They contribute nothing to security configs. Commands and queries live in audiences and operate on bounded-context aggregates by calling their domain methods. The same conceptual operation (e.g., creating a lead) typically has separate command classes per audience — `Audience\Admin\…\CreateLeadCommand` vs `Audience\Partner\…\CreateLeadCommand` — because the surrounding concerns differ (history records, originator stamping, additional validations).
 
@@ -193,5 +193,5 @@ These are real questions raised during design that were intentionally not resolv
 
 - `CognitoJwtUserResolver` for admin panel when admin module lands in production.
 - Laravel `UserResolverInterface` implementation when the Laravel layer reaches authenticated CQRS calls.
-- Customer audience security config (currently only Admin and Partner are wired).
+- Authenticated routes inside the Site audience (cart, profile) — currently only the public read queries are wired; cart/profile permissions land when those features ship.
 - Per-instance policy extension point if/when contextual checks become necessary. The decorator can resolve an optional `PolicyResolverInterface` per command FQCN and invoke `$policy->check($user, $command)` after permission passes — no breaking changes required.
