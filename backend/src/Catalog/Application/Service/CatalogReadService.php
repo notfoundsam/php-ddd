@@ -35,11 +35,10 @@ final class CatalogReadService
 
     public function searchProducts(SearchFilters $filters, int $page, int $perPage): ProductSearchResult
     {
-        $page = $page < 1 ? 1 : $page;
         // Cap the page index before it reaches the repository. The in-memory repo doesn't care,
         // but a DB-backed implementation would translate ?page=99999999 into a multi-billion-row
         // OFFSET. Hard ceiling keeps that input from ever hitting the storage layer.
-        $page = $page > self::PAGE_HARD_CAP ? self::PAGE_HARD_CAP : $page;
+        $page = min(max(1, $page), self::PAGE_HARD_CAP);
         $perPage = $perPage < 1 ? self::PER_PAGE_FALLBACK : $perPage;
 
         $result = $this->repository->findByFilters($filters, $page, $perPage);

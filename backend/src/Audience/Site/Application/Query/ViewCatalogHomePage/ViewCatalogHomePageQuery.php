@@ -27,7 +27,7 @@ final class ViewCatalogHomePageQuery implements QueryInterface
     public function __construct(SearchFilters $filters, int $page = 1, int $perPage = self::DEFAULT_PER_PAGE)
     {
         $this->filters = $filters;
-        $this->page = $page < 1 ? 1 : $page;
+        $this->page = max(1, $page);
         $this->perPage = $perPage < 1 ? self::DEFAULT_PER_PAGE : $perPage;
     }
 
