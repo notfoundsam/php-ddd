@@ -295,16 +295,15 @@ return array(
 		 * ---------------------------------------------------------------------
 		 */
 
-		// 'auto_filter_output' => true,
+		// Disabled: FuelPHP's auto-filter tries to sanitize *every* view variable, which fights
+		// the DDD approach of passing typed DTOs into templates. Each view template is
+		// responsible for explicit `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` on dynamic
+		// string output — that contract is enforced by code review, not the framework.
+		// See docs/adr/012-blade-template-engine-fuelphp.md.
+		'auto_filter_output' => false,
 
-		/**
-		 * ---------------------------------------------------------------------
-		 *  With output encoding switched on, all objects passed will be
-		 *  converted to strings or throw exceptions unless they are instances
-		 *  of the classes in this array.
-		 * ---------------------------------------------------------------------
-		 */
-
+		// With auto-filter disabled, the whitelist below is no longer consulted by
+		// `Security::htmlentities`. Kept at framework defaults for completeness.
 		'whitelisted_classes' => array(
 			'Fuel\\Core\\Presenter',
 			'Fuel\\Core\\Response',
