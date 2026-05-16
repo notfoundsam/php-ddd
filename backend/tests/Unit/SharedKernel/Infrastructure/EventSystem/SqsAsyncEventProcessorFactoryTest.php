@@ -10,8 +10,9 @@ use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\EventSystem\EventFactoryInterface;
 use SharedKernel\Domain\EventSystem\ListenerProviderInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
-use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
 use ReflectionMethod;
+use RuntimeException;
+use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
 
 class SqsAsyncEventProcessorFactoryTest extends TestCase
 {
@@ -29,6 +30,37 @@ class SqsAsyncEventProcessorFactoryTest extends TestCase
         $processor = $factory();
 
         $this->assertInstanceOf(AsyncEventProcessorInterface::class, $processor);
+    }
+
+    public function testCreatesInMemoryProcessorForDevelopmentWhenQueueUrlIsEmpty(): void
+    {
+        $factory = new SqsAsyncEventProcessorFactory(
+            new Environment('development'),
+            $this->createMock(EventFactoryInterface::class),
+            $this->createMock(ListenerProviderInterface::class),
+            $this->createMock(LoggerInterface::class),
+            '',
+            ''
+        );
+
+        $processor = $factory();
+
+        $this->assertInstanceOf(AsyncEventProcessorInterface::class, $processor);
+    }
+
+    public function testThrowsForDevelopmentWhenQueueUrlIsMalformed(): void
+    {
+        $factory = new SqsAsyncEventProcessorFactory(
+            new Environment('development'),
+            $this->createMock(EventFactoryInterface::class),
+            $this->createMock(ListenerProviderInterface::class),
+            $this->createMock(LoggerInterface::class),
+            'not-a-url',
+            'us-east-1'
+        );
+
+        $this->expectException(RuntimeException::class);
+        $factory();
     }
 
     /**
