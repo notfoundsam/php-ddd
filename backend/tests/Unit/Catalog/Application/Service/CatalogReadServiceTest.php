@@ -93,6 +93,16 @@ class CatalogReadServiceTest extends TestCase
         $this->assertSame(12, $response->getPerPage());
     }
 
+    public function testSearchProductsCapsExtremePageBeforeReachingRepository(): void
+    {
+        $repo = new StubProductRepository([], 0);
+        $service = new CatalogReadService($repo);
+
+        $service->searchProducts(new SearchFilters(), 99999999, 12);
+
+        $this->assertSame(10000, $repo->lastPage);
+    }
+
     public function testSearchProductsItemsForUnknownBrandFallBackToEmptyName(): void
     {
         $repo = new StubProductRepository(

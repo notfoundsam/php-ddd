@@ -40,10 +40,8 @@ return array(
 
 	/**
 	 * -------------------------------------------------------------------------
-	 *  Example for Presenter
+	 *  Example route with optional parameter
 	 * -------------------------------------------------------------------------
-	 *
-	 *  A route for showing page using Presenter
 	 *
 	 */
 

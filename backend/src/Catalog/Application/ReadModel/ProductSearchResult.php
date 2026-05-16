@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Catalog\Application\ReadModel;
 
-use SharedKernel\Application\CqrsMessageBus\Queries\QueryResponseInterface;
-
-final class ProductSearchResult implements QueryResponseInterface
+final class ProductSearchResult
 {
     /** @var ProductListItem[] */
     private array $items;

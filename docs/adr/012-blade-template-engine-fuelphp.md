@@ -78,6 +78,7 @@ FuelPHP's module-scoped view paths (`modules/admin/views/welcome/index.php`) do 
 - One additional Composer dependency tree (`jenssegers/blade` pulls `illuminate/view`, `illuminate/filesystem`, `illuminate/events`, `illuminate/container`, `symfony/finder`, etc.). Pure framework cost is acceptable for the engine we want.
 - Compiled-template cache directory (`app/cache/blade/`) needs to exist and be writable. The Blade facade creates it on first render; the parent (`app/cache/`) must be writable by the PHP process in deployments.
 - `Fuel\Core\View` is no longer the way to render — any future contributor who copies a FuelPHP tutorial verbatim will write code that fails.
+- `auto_filter_output = false` is now site-wide. The framework-level escape pass that previously caught variables passed through `Fuel\Core\View` is gone. The protection rests entirely on Blade being the only render path: any new path that emits HTML must go through `Blade::render` / `Blade::respond` (or escape manually) — there is no global net behind it.
 
 **Migrations and follow-ups:**
 

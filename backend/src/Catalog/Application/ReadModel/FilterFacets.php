@@ -6,9 +6,8 @@ namespace Catalog\Application\ReadModel;
 
 use Catalog\Domain\ValueObjects\Brand;
 use Catalog\Domain\ValueObjects\Category;
-use SharedKernel\Application\CqrsMessageBus\Queries\QueryResponseInterface;
 
-final class FilterFacets implements QueryResponseInterface
+final class FilterFacets
 {
     /** @var Category[] */
     private array $categories;
