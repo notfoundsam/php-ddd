@@ -1,6 +1,8 @@
 <?php
 
 use Audience\Admin\Infrastructure\Security\AdminSecurityConfigRegistry;
+use Audience\Site\Infrastructure\CqrsMessageBus\SiteQueryHandlerRegistry;
+use Audience\Site\Infrastructure\Security\SiteSecurityConfigRegistry;
 use Audience\Partner\Infrastructure\Security\PartnerSecurityConfigRegistry;
 use DI\ContainerBuilder;
 use Fuel\Core\Fuel;
@@ -89,12 +91,13 @@ $containerBuilder->addDefinitions(array_merge([
     UserResolverInterface::class => DI\autowire(FuelPhpAuthUserResolver::class),
 
     // Security Config — composed from SharedKernel + per-audience registries.
-    // Bounded contexts (Crm, Marketing) own only domain. Audiences (Admin, Partner, Customer)
+    // Bounded contexts (Crm, Marketing) own only domain. Audiences (Admin, Partner, Site)
     // own their commands, queries, and roles. Add new audience registries here.
     SecurityConfigInterface::class => DI\factory(function (ContainerInterface $c) {
         $factory = new SecurityConfigFactory([
             $c->get(AdminSecurityConfigRegistry::class),
             $c->get(PartnerSecurityConfigRegistry::class),
+            $c->get(SiteSecurityConfigRegistry::class),
         ]);
         return $factory();
     }),
@@ -141,9 +144,7 @@ $containerBuilder->addDefinitions(array_merge([
     // Decorator chain (outermost → innermost): Throttle → Security → Logger → Handler
     QueryBusInterface::class => DI\factory(function (ContainerInterface $c) {
         $bus = (new QueryBusFactory($c, [
-            // Add bounded-context registries here:
-            // new CrmQueryHandlerRegistry(),
-            // new MarketingQueryHandlerRegistry(),
+            new SiteQueryHandlerRegistry(),
         ]))();
         $bus = new QueryLoggerDecorator($bus, $c->get(LoggerInterface::class));
         $bus = new SecurityQueryDecorator(

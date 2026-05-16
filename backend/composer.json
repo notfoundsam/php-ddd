@@ -6,6 +6,7 @@
   "autoload": {
     "psr-4": {
       "Audience\\": "src/Audience/",
+      "Catalog\\": "src/Catalog/",
       "Crm\\": "src/Crm/",
       "Marketing\\": "src/Marketing/",
       "SharedKernel\\": "src/SharedKernel/"

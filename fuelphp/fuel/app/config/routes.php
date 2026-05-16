@@ -20,7 +20,8 @@ return array(
 	 *
 	 */
 
-	'_root_' => 'welcome/index',
+	'_root_' => 'site/home/index',
+    'products' => 'site/home/products',
     'admin' => 'admin/welcome/index',
     'partner' => 'partner/welcome/index',
     'healthcheck' => function () { return Response::forge('healthy'); },
