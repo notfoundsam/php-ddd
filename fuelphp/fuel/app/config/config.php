@@ -422,9 +422,10 @@ return array(
 	 *
 	 */
 
-	'module_paths' => array(
-		APPPATH.'modules'.DS
-	),
+	// Modules removed — admin/partner controllers live flat in app/classes/controller/.
+	// Audience boundary is `backend/src/Audience/`; host-based dispatch is in
+	// `app/config/subdomain.php`. See docs/adr/013-no-fuelphp-modules-flat-controllers.md.
+	'module_paths' => array(),
 
 	/**
 	 * -------------------------------------------------------------------------

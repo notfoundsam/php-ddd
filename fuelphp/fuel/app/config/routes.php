@@ -21,6 +21,8 @@ return array(
 	 */
 
 	'_root_' => 'welcome/index',
+    'admin' => 'admin/welcome/index',
+    'partner' => 'partner/welcome/index',
     'healthcheck' => function () { return Response::forge('healthy'); },
 
 	/**
