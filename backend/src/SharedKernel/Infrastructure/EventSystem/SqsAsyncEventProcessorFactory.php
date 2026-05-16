@@ -58,15 +58,17 @@ final class SqsAsyncEventProcessorFactory
 
     private function createRepository(): AsyncRepositoryInterface
     {
-        // Test: In-memory repository (dispatches synchronously)
-        if ($this->environment->isTest()) {
+        // Test, or Development without an SQS endpoint configured: in-memory (synchronous) dispatch.
+        // The DEV fallback lets contributors run the app locally without standing up ElasticMQ —
+        // async events are dispatched synchronously instead of being queued.
+        if ($this->environment->isTest() || ($this->environment->isDevelopment() && $this->queueUrl === '')) {
             return new InMemoryAsyncRepository(
                 $this->listenerProvider,
                 $this->logger
             );
         }
 
-        // Production/Staging/Development: SQS-based repository
+        // Production/Staging/Development (with SQS configured): SQS-based repository
         $config = [
             'region' => $this->region,
             'version' => '2012-11-05',
