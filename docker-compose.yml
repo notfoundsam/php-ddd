@@ -12,6 +12,12 @@ x-shared-env: &shared-env
   REDIS_READER_ENDPOINT: redis
   # CDN settings
   CDN_IMAGES_URL: https://images.php-ddd.test
+  # Queue (ElasticMQ local SQS)
+  SQS_ASYNC_EVENTS_QUEUE_URL: http://elasticmq:9324/queue/async-events
+  AWS_DEFAULT_REGION: ap-northeast-1
+  # AWS SDK warns about PHP <8.1 EOL on every client construction; mute in dev
+  # since FuelPHP's error handler escalates the deprecation notice to a fatal.
+  AWS_SUPPRESS_PHP_DEPRECATION_WARNING: "true"
   # Email
   EMAIL_DOMAIN: php-ddd.test
   # SMS (Twilio) — TWILIO_API_BASE_URL routes to the local sms-mock-server in dev
@@ -20,6 +26,26 @@ x-shared-env: &shared-env
   TWILIO_AUTH_TOKEN: development-auth-token
   TWILIO_SMS_FROM: "+15005550006"
   TWILIO_CALLBACK_URL: ""
+
+# Common environment for any container running the FuelPHP app code (web + workers).
+# Merged via `<<: *fuelphp-env` so each service can add its own keys (e.g. PHP_IDE_CONFIG)
+# without re-listing the shared ones.
+x-fuelphp-env: &fuelphp-env
+  <<: *shared-env
+  FUEL_ENV: development
+  APP_URL: https://php-ddd.test/
+  APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
+  APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a
+
+# Base shape shared by the FuelPHP web container and all FuelPHP-based workers.
+# YAML merge does NOT combine list-typed keys (volumes, depends_on), so each service
+# defines those itself; common build/networks/env live here.
+x-fuelphp-service: &fuelphp-service
+  build:
+    context: ./dev-tools/app-fuelphp
+    dockerfile: php.dockerfile
+  networks:
+    - php-ddd
 
 services:
   traefik:
@@ -105,6 +131,14 @@ services:
       - php-ddd
     ports:
       - "6379:6379"
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.6.11
+    volumes:
+      - ./dev-tools/elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro
+    networks:
+      - php-ddd
+    ports:
+      - "9324:9324"
   nginx:
     build:
       context: ./dev-tools/app-fuelphp
@@ -148,15 +182,9 @@ services:
       - "traefik.http.routers.app-partner-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
   fuelphp:
-    build:
-      context: ./dev-tools/app-fuelphp
-      dockerfile: php.dockerfile
+    <<: *fuelphp-service
     environment:
-      <<: *shared-env
-      FUEL_ENV: development
-      APP_URL: https://php-ddd.test/
-      APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
-      APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a
+      <<: *fuelphp-env
       PHP_IDE_CONFIG: serverName=Docker
     volumes:
       - ./backend:/app/backend
@@ -165,13 +193,27 @@ services:
       - ./storage:/app/storage
       - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./docker/php-fpm-docker.conf:/usr/local/etc/php-fpm.d/zzz-docker.conf
-    networks:
-      - php-ddd
     depends_on:
       - redis
       - db
       - mail
       - sms
+      - elasticmq
+
+  worker-async:
+    <<: *fuelphp-service
+    command: php /app/fuelphp/oil refine worker:async
+    environment:
+      <<: *fuelphp-env
+    volumes:
+      - ./backend:/app/backend
+      - ./fuelphp:/app/fuelphp
+      - ./storage:/app/storage
+      - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    depends_on:
+      - redis
+      - db
+      - elasticmq
 
   laravel:
     build:

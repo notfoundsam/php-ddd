@@ -54,7 +54,7 @@ use SharedKernel\Infrastructure\EventSystem\EventFactoryFactory;
 use SharedKernel\Infrastructure\EventSystem\ListenerProviderFactory;
 use SharedKernel\Infrastructure\EventSystem\OutboxEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\ScheduledEventProcessor;
-use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
+use Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
 use Infrastructure\Logger\MonologLoggerFactory;
 use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
 use Infrastructure\Notification\SmsNotifierFactory;
@@ -183,14 +183,6 @@ $containerBuilder->addDefinitions(array_merge([
         DI\get(FuelPhpScheduledEventRepository::class),
         DI\get(ListenerProviderInterface::class),
         DI\get(LoggerInterface::class)
-    ),
-    SqsAsyncEventProcessorFactory::class => DI\autowire(SqsAsyncEventProcessorFactory::class)->constructor(
-        DI\get(Environment::class),
-        DI\get(EventFactoryInterface::class),
-        DI\get(ListenerProviderInterface::class),
-        DI\get(LoggerInterface::class),
-        getenv('SQS_ASYNC_EVENTS_QUEUE_URL') ?: '',
-        getenv('AWS_REGION') ?: ''
     ),
     AsyncEventProcessorInterface::class => DI\factory(SqsAsyncEventProcessorFactory::class),
 
