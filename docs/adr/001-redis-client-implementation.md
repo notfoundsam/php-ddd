@@ -77,16 +77,9 @@ Two vocabularies are used deliberately: AWS-facing config uses `primary`/`reader
 
 ### Strong-consistency reads (RedisMasterClientInterface)
 
-Cache reads through `ReadWriteRedisClient` go to the replica and are eventually consistent. A few consumers — rate limiting being the canonical case — need to read a value that may have been written milliseconds earlier by another request, with no replica lag tolerated. Routing such a read through a lagging replica is a real correctness bug (a just-blocked identifier could slip through).
+`ReadWriteRedisClient` routes reads to the replica — eventually consistent. Consumers that need to read a value written milliseconds earlier (rate limiting being the canonical case) depend instead on `RedisMasterClientInterface extends RedisClientInterface`, bound to a master-only client. `PhpRedisClient` implements both; `ReadWriteRedisClient` only the base.
 
-We model this with a marker interface, `RedisMasterClientInterface extends RedisClientInterface`, bound to a master-only client. `PhpRedisClient` implements both; `ReadWriteRedisClient` implements only the base interface. Consumers depend on whichever interface matches their consistency needs.
-
-```
-RedisClientInterface          → ReadWriteRedisClient (cache, eventual consistency)
-RedisMasterClientInterface    → PhpRedisClient (throttler, strong consistency)
-```
-
-`RedisMasterClientFactory` builds the master client from `redis.primary` only — no reader fallback, no failover decorator. If the master is unreachable, strong-consistency callers fail fast; for security-sensitive workloads (rate limiting) that is the correct posture. Both clients share the same `pconnect` persistent-id (`'master'`), so they reuse the same TCP socket per FPM worker — no connection doubling.
+`RedisMasterClientFactory` reads `redis.primary` only — no reader fallback, no failover decorator. For security-sensitive workloads, fail-fast on an unreachable master is the correct posture. Both clients share the same `pconnect` persistent-id (`'master'`) so they reuse the same TCP socket per FPM worker — no connection doubling.
 
 ### Pipeline isn't included
 
