@@ -7,7 +7,6 @@ use Infrastructure\Storage\LocalStorage;
 use Infrastructure\Storage\S3ClientFactory;
 use Infrastructure\Storage\S3Storage;
 use Infrastructure\Storage\StorageFactory;
-use InvalidArgumentException;
 use ReflectionClass;
 use RuntimeException;
 use SharedKernel\Domain\Logger\LoggerInterface;
@@ -92,7 +91,7 @@ class Test_StorageFactory extends TestCase
     {
         Config::set('storage.driver', 'ftp');
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Unknown storage.driver "ftp" (expected: local, s3)');
 
         (new StorageFactory($this->logger(), new S3ClientFactory()))();

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Infrastructure\Storage;
 
 use Fuel\Core\Config;
-use InvalidArgumentException;
 use RuntimeException;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Storage\StorageInterface;
@@ -34,7 +33,7 @@ final class StorageFactory
             return $this->createLocal();
         }
 
-        throw new InvalidArgumentException(sprintf(
+        throw new RuntimeException(sprintf(
             'Unknown storage.driver "%s" (expected: local, s3)',
             $driver
         ));
