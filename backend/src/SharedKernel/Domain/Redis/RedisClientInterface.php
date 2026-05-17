@@ -100,11 +100,4 @@ interface RedisClientInterface
      * @throws RedisConnectionException
      */
     public function expire(string $key, int $ttl): bool;
-
-    /**
-     * Get value by key from master (write) node only
-     * Use this for operations requiring strong consistency
-     * @throws RedisConnectionException
-     */
-    public function getMaster(string $key): ?string;
 }

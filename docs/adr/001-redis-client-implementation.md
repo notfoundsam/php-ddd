@@ -49,14 +49,16 @@ This means:
 backend/src/SharedKernel/
   Domain/Redis/
     RedisClientInterface.php          # Contract
+    RedisMasterClientInterface.php    # Marker for strong-consistency reads
     Exceptions/RedisConnectionException.php
   Infrastructure/Redis/
     ReadWriteRedisClient.php          # Routes reads to replica, writes to master
 
 fuelphp/fuel/packages/infrastructure/classes/Redis/
-  PhpRedisClient.php                  # ext-redis implementation
+  PhpRedisClient.php                  # ext-redis impl (both interfaces)
   RedisConfig.php                     # Connection DTO
-  RedisClientFactory.php              # Reads Config::get('redis.*'), builds clients
+  RedisClientFactory.php              # Builds ReadWriteRedisClient
+  RedisMasterClientFactory.php        # Builds master-only client (no failover)
 
 fuelphp/fuel/app/config/redis.php     # primary + reader sections, env-overridable
 ```
@@ -68,6 +70,23 @@ Laravel will mirror this layout: `laravel/app/Infrastructure/Redis/*` + a servic
 `RedisClientFactory` reads from the framework's config (`Config::get('redis.*')` on FuelPHP), not from `getenv()` directly. Defaults live in `app/config/redis.php` in code; env variables only override. This makes per-environment overrides composable (FuelPHP's `app/config/{development,test}/redis.php` cascade) and keeps the factory free of env knowledge. Same pattern as `Blade` (`app/classes/blade.php`).
 
 **Do not delete `db.redis.default` from `fuelphp/fuel/app/config/db.php`** — FuelPHP core (`Session_Redis` via `Redis_Db`) consumes it directly with its own array shape; it is not interchangeable with `redis.php`.
+
+### Terminology: primary/reader vs master/replica
+
+Two vocabularies are used deliberately: AWS-facing config uses `primary`/`reader` (matching ElastiCache endpoint names that ops sees in Terraform/CloudFormation), in-code roles use `master`/`replica` (matching Redis topology terminology). The bridge is `redis.primary.connection_type = 'master'`. Keep the AWS terms at the env/config boundary, the Redis terms in code.
+
+### Strong-consistency reads (RedisMasterClientInterface)
+
+Cache reads through `ReadWriteRedisClient` go to the replica and are eventually consistent. A few consumers — rate limiting being the canonical case — need to read a value that may have been written milliseconds earlier by another request, with no replica lag tolerated. Routing such a read through a lagging replica is a real correctness bug (a just-blocked identifier could slip through).
+
+We model this with a marker interface, `RedisMasterClientInterface extends RedisClientInterface`, bound to a master-only client. `PhpRedisClient` implements both; `ReadWriteRedisClient` implements only the base interface. Consumers depend on whichever interface matches their consistency needs.
+
+```
+RedisClientInterface          → ReadWriteRedisClient (cache, eventual consistency)
+RedisMasterClientInterface    → PhpRedisClient (throttler, strong consistency)
+```
+
+`RedisMasterClientFactory` builds the master client from `redis.primary` only — no reader fallback, no failover decorator. If the master is unreachable, strong-consistency callers fail fast; for security-sensitive workloads (rate limiting) that is the correct posture. Both clients share the same `pconnect` persistent-id (`'master'`), so they reuse the same TCP socket per FPM worker — no connection doubling.
 
 ### Pipeline isn't included
 

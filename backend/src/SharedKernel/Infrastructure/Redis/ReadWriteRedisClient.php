@@ -120,11 +120,6 @@ class ReadWriteRedisClient implements RedisClientInterface
         return $this->writeClient->setnx($key, $value, $ttl);
     }
 
-    public function getMaster(string $key): ?string
-    {
-        return $this->writeClient->get($key);
-    }
-
     private function logFailover(string $operation, RedisConnectionException $e): void
     {
         if ($this->logger === null) {
