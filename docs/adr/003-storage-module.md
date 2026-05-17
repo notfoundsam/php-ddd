@@ -18,14 +18,14 @@ Flysystem 3.x requires PHP 8.0+. FuelPHP runs on PHP 7.4 for the duration of the
 
 ### Layer split
 
-`StorageInterface`, `StorageException`, `CdnUrlResolver`, and `StringStorageTrait` live in `backend/src/SharedKernel/{Domain,Infrastructure}/Storage/`. They have no framework dependencies and are shared by both apps.
+`StorageInterface`, `StorageException`, and `CdnUrlResolver` live in `backend/src/SharedKernel/{Domain,Infrastructure}/Storage/`. They have no framework or PSR-7 implementation dependencies and are shared by both apps.
 
-Concrete adapters and the factory live in each framework's directory:
+Concrete adapters, the factory, and `StringStorageTrait` live in each framework's directory:
 
-- FuelPHP: `fuelphp/fuel/packages/infrastructure/classes/Storage/` — `LocalStorage`, `S3Storage`, `S3ClientFactory`, `StorageFactory` under namespace `Infrastructure\Storage`.
+- FuelPHP: `fuelphp/fuel/packages/infrastructure/classes/Storage/` — `LocalStorage`, `S3Storage`, `S3ClientFactory`, `StorageFactory`, `StringStorageTrait` under namespace `Infrastructure\Storage`.
 - Laravel (when implemented): a thin wrapper over `Storage::disk(...)` exposing the same `StorageInterface`.
 
-Duplication of `LocalStorage`/`S3Storage` between FuelPHP and Laravel is accepted while two PHP versions coexist. The trait + interface guarantee identical path-validation semantics, exception mapping, and S3 behavioural quirks.
+`StringStorageTrait` is placed adjacent to the adapters because it uses `GuzzleHttp\Psr7\Utils` (a PSR-7 *implementation*, not the interface package) for `string ↔ Stream` conversion in `putString`/`putFile`. Implementation-level helpers belong with implementations, not in the framework-agnostic domain layer. Duplication of `LocalStorage`/`S3Storage`/trait between FuelPHP and Laravel is accepted while two PHP versions coexist. The interface contract + identical trait code guarantee path-validation semantics, exception mapping, and S3 behavioural quirks stay symmetric.
 
 ### Configuration cascade
 
@@ -39,7 +39,7 @@ Duplication of `LocalStorage`/`S3Storage` between FuelPHP and Laravel is accepte
 
 ### Path-traversal protection
 
-`StringStorageTrait::buildFullPath()` rejects any path containing `..` segments (`(^|/)\.\.(/|$)`). The check applies to both local (file-system traversal) and S3 (unintended bucket keys) and runs on every storage operation.
+`StringStorageTrait::buildFullPath()` (in `Infrastructure\Storage`) rejects any path containing `..` segments (`(^|/)\.\.(/|$)`). The check applies to both local (file-system traversal) and S3 (unintended bucket keys) and runs on every storage operation.
 
 ### Behavioural consistency between adapters
 
@@ -65,13 +65,13 @@ backend/src/SharedKernel/
     StorageException.php          # Operation failures with cause chaining
   Infrastructure/Storage/
     CdnUrlResolver.php            # Path prefix → CDN URL mapping
-    StringStorageTrait.php        # buildFullPath + put/getString/putFile
 
 fuelphp/fuel/packages/infrastructure/classes/Storage/
   LocalStorage.php                # PHP-native filesystem, root from config
   S3Storage.php                   # AWS S3 adapter
   S3ClientFactory.php             # Creates Aws\S3\S3Client per region
   StorageFactory.php              # Reads Config::get('storage.*'), picks adapter
+  StringStorageTrait.php          # buildFullPath + put/getString/putFile
 
 fuelphp/fuel/app/config/
   storage.php                     # Defaults + getenv overrides

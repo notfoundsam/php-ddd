@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Storage;
+namespace Infrastructure\Storage;
 
 use GuzzleHttp\Psr7\Utils;
 use InvalidArgumentException;

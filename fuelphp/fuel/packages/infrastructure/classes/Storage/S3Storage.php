@@ -12,7 +12,6 @@ use Psr\Http\Message\StreamInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Storage\StorageException;
 use SharedKernel\Domain\Storage\StorageInterface;
-use SharedKernel\Infrastructure\Storage\StringStorageTrait;
 
 final class S3Storage implements StorageInterface
 {
