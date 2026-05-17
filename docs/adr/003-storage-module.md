@@ -1,7 +1,7 @@
 # ADR-003: Storage Module Design
 
 **Status:** Accepted
-**Date:** 2026-05-17 (supersedes 2026-03-22 version)
+**Date:** 2026-05-17 (revised — adds public/private convention & per-subdomain CDN)
 
 ## Context
 
@@ -52,9 +52,23 @@ Concrete adapters, the factory, and `StringStorageTrait` live in each framework'
 
 `CdnUrlResolver` takes `array<string, string> $mappings` (prefix → CDN base URL) via constructor. The DI container provides per-environment mappings. No `Environment` dependency, no hard-coded domains.
 
+### Public/private boundary: `public/<area>/` prefix + per-subdomain CDN
+
+`public/` is a path-level marker, not a separate disk. Anything stored under `public/<area>/...` is intended for world-readable distribution through a CDN; anything else (`users/123/passport.jpg`, internal CSVs) stays reachable only through `StorageInterface`.
+
+Each public area gets its own CDN subdomain whose origin path is `public/<area>/`:
+
+- `public/images/...` is served by `images.php-ddd.test` (dev) → CloudFront distribution mapped to `s3://<bucket>/public/images/` (prod). A future `public/files/...` would get its own `files.php-ddd.test` distribution.
+- The subdomain hides the `public/<area>/` prefix from the URL: stored key `public/images/logo.png` becomes `https://images.php-ddd.test/logo.png`.
+- `CdnUrlResolver` mirrors this by matching the longest prefix in its mapping (`'public/images/' => CDN_IMAGES_URL`) and stripping it when forming the URL.
+
+This avoids the "one CDN for all public content" trap: each subdomain's scope is fixed at its origin path, so a new area (audio, files, ...) is added by registering a new subdomain + mapping entry, not by widening an existing one.
+
 ### Dev environment: shared `./storage/` mount
 
-A top-level `./storage/` directory at the repo root is mounted as `/app/storage` in both `fuelphp` and `laravel` services so files written by either container are visible to the other. The local CDN nginx (`images.php-ddd.test`) mounts it as `/usr/share/nginx/html:ro` to serve user-uploaded content. Frontend assets remain reachable through the main app nginx at `/build/...` and `/assets/...` — the local CDN is now exclusively for user uploads, matching the S3+CloudFront production model.
+A top-level `./storage/` directory at the repo root is mounted as `/app/storage` in both `fuelphp` and `laravel` services so files written by either container are visible to the other. The local CDN nginx mounts the same directory as `/usr/share/nginx/html:ro`, and each `server` block in `dev-tools/cdn-nginx.conf` sets `root` to the area-specific subdirectory (e.g. `root /usr/share/nginx/html/public/images` for `images.php-ddd.test`). Files outside `public/<area>/` are unreachable through nginx, so the public/private boundary is enforced by `root`, not by extension whitelist.
+
+Frontend assets remain reachable through the main app nginx at `/build/...` and `/assets/...` — the local CDN is exclusively for user-uploaded content, matching the S3+CloudFront production model.
 
 ## Layout
 
