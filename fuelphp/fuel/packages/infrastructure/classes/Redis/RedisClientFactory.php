@@ -11,6 +11,16 @@ use SharedKernel\Infrastructure\Redis\ReadWriteRedisClient;
 
 class RedisClientFactory
 {
+    /**
+     * Maps config section to the env variable that ultimately backs its host.
+     * Used in the misconfiguration exception so on-call can grep the codebase
+     * for the env name they see in the alert.
+     */
+    private const HOST_ENV_BY_SECTION = [
+        'primary' => 'REDIS_PRIMARY_ENDPOINT',
+        'reader'  => 'REDIS_READER_ENDPOINT',
+    ];
+
     public function __invoke(): RedisClientInterface
     {
         Config::load('redis', true);
@@ -29,7 +39,12 @@ class RedisClientFactory
     private function buildClient(array $cfg, string $section): RedisClientInterface
     {
         if (empty($cfg['host'])) {
-            throw new RuntimeException(sprintf('redis.%s.host is not configured', $section));
+            $envName = self::HOST_ENV_BY_SECTION[$section] ?? '<unknown>';
+            throw new RuntimeException(sprintf(
+                'redis.%s.host is not configured (env %s)',
+                $section,
+                $envName
+            ));
         }
 
         return new PhpRedisClient(new RedisConfig(
