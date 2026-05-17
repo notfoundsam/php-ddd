@@ -111,6 +111,8 @@ Key constraints when working with the event system:
 - **HTMX partial endpoints**: redirect non-HTMX callers to the user-facing URL; set `HX-Push-Url` so HTMX pushes the user-facing URL, not the partial endpoint. Reference: `Controller_Site_Home::action_products`.
 - **New top-level namespace in `backend/composer.json`**: run `docker compose exec fuelphp composer -d /app/fuelphp update app/backend` after `make composer-autoload`. The path-repo lock on the fuelphp side doesn't pick up new top-level namespaces from a plain dump.
 - **Numeric clamps**: prefer `max(N, $x)` / `min(N, $x)` / `min(max($lo, $x), $hi)` over `$x < N ? N : $x` ternaries. The codebase already uses `max()` in `ProductSearchResult`, `FilterFacets`, `RedisThrottler`; align new code with that. Tertiary `?:` is fine for *fallback* semantics (e.g. `$perPage < 1 ? self::DEFAULT : $perPage` where zero means "unset", not "below the floor").
+- **ADR style**: state the decision, then its rationale once. Don't repeat the same fact as prose + bullet list + ASCII diagram — pick one form. Cut anything that recaps the codebase rather than explaining a choice.
+- **Comments**: default to none. Write one only for non-obvious *why* (hidden constraint, workaround, surprising invariant). Don't restate the code, don't reference callers or PRs, don't write multi-line class headers that duplicate the ADR. Exception: phpstan-level-5 array `@param` shapes (`array<string,mixed>`) and `@throws` are kept — they're load-bearing, not prose. Legacy FuelPHP `@author`/version blocks are not the model.
 
 ## Git workflow
 
