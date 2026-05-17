@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Redis;
+namespace Infrastructure\Redis;
 
 final class RedisConfig
 {

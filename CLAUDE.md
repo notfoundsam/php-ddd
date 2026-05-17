@@ -33,6 +33,22 @@ DI container wiring lives in each framework's config:
 
 Do not create factory classes that instantiate framework-specific classes inside `backend/src/`. Instead, wire concrete implementations in the framework's DI config.
 
+### Factory configuration source
+
+Framework-specific factories (e.g. `Infrastructure\Redis\RedisClientFactory`) read settings from the framework's native config layer, **not** from `getenv()` directly:
+
+- FuelPHP: `Config::load('<name>', true)` + `Config::get('<name>.<key>')`. The config file (`fuelphp/fuel/app/config/<name>.php`) declares defaults in code and uses `getenv()` only to override them.
+- Laravel: read via `config('...')`; the config file consumes `env(...)` the same way.
+
+Reference: `Infrastructure\Redis\RedisClientFactory` + `fuelphp/fuel/app/config/redis.php`. Same pattern as `Blade` (`fuelphp/fuel/app/classes/blade.php`).
+
+Rationale:
+- Defaults are version-controlled, in code, in one place per framework — env variables only override.
+- Symmetric between FuelPHP and Laravel — Laravel-side factories will read `config(...)` from a file that consumes `env(...)`, identical shape.
+- Per-environment overrides come for free via FuelPHP's `app/config/{development,test}/<name>.php` cascade.
+
+`getenv()` directly inside a factory is the **legacy** pattern (`SmsNotifierFactory`, `StorageFactory`); migrate to `Config::get` when touching them. Do not introduce new factories that read env directly.
+
 ### Directory Structure
 - `backend/src/` - Framework-agnostic backend layer:
   - **Bounded contexts** (DDD model boundaries — own aggregates, domain events, and a **service-style public API**):
