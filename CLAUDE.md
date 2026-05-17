@@ -112,6 +112,11 @@ Key constraints when working with the event system:
 - **New top-level namespace in `backend/composer.json`**: run `docker compose exec fuelphp composer -d /app/fuelphp update app/backend` after `make composer-autoload`. The path-repo lock on the fuelphp side doesn't pick up new top-level namespaces from a plain dump.
 - **Numeric clamps**: prefer `max(N, $x)` / `min(N, $x)` / `min(max($lo, $x), $hi)` over `$x < N ? N : $x` ternaries. The codebase already uses `max()` in `ProductSearchResult`, `FilterFacets`, `RedisThrottler`; align new code with that. Tertiary `?:` is fine for *fallback* semantics (e.g. `$perPage < 1 ? self::DEFAULT : $perPage` where zero means "unset", not "below the floor").
 
+## Git workflow
+
+- Stage with `git add -u` + explicit new-file paths. Avoid `git add -A` / `git add .` and don't list every tracked file by hand when `-u` covers them.
+- Commit messages: one-line conventional-style subject, body only if non-obvious *why* (not a recap of the diff). Two short lines beats six wordy ones.
+
 ## Development Commands
 
 ### Docker-based Development
