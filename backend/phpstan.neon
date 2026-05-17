@@ -19,8 +19,6 @@ parameters:
             message: '#Psr\\Http\\Message\\StreamInterface#'
         -
             message: '#GuzzleHttp\\#'
-        -
-            message: '#\(bool\|int\|Redis\)#'
         # PHPUnit mock methods on typed properties
         # PHPStan-phpunit only recognises mocks from $this->createMock() inline,
         # not when stored to a typed property first

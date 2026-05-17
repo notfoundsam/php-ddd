@@ -43,25 +43,31 @@ This means:
 
 ## Architecture
 
-The domain layer defines `RedisClientInterface` — framework-agnostic contract for Redis operations. The infrastructure layer contains:
-
-- `PhpRedisClient` — implements the interface using the phpredis extension
-- `RedisConfig` — connection configuration (host, port, database, timeout, connection type)
-- `RedisClientFactory` — creates read/write client pair from environment variables
-- `ReadWriteRedisClient` — routes reads to replica, writes to master
+`RedisClientInterface` (Domain) and the `ReadWriteRedisClient` decorator (Infrastructure) are framework-agnostic and live in `backend/src/SharedKernel/`. The `ext-redis`-backed implementation and its factory live in the framework's directory, because they depend on a non-portable extension and on the framework's config layer.
 
 ```
-Domain/Redis/
-  RedisClientInterface.php      # Contract
-  Exceptions/
-    RedisConnectionException.php
+backend/src/SharedKernel/
+  Domain/Redis/
+    RedisClientInterface.php          # Contract
+    Exceptions/RedisConnectionException.php
+  Infrastructure/Redis/
+    ReadWriteRedisClient.php          # Routes reads to replica, writes to master
 
-Infrastructure/Redis/
-  PhpRedisClient.php            # Implementation
-  RedisConfig.php               # Connection config
-  RedisClientFactory.php        # Factory
-  ReadWriteRedisClient.php      # Read/write routing
+fuelphp/fuel/packages/infrastructure/classes/Redis/
+  PhpRedisClient.php                  # ext-redis implementation
+  RedisConfig.php                     # Connection DTO
+  RedisClientFactory.php              # Reads Config::get('redis.*'), builds clients
+
+fuelphp/fuel/app/config/redis.php     # primary + reader sections, env-overridable
 ```
+
+Laravel will mirror this layout: `laravel/app/Infrastructure/Redis/*` + a service provider reading `config('database.redis.*')`.
+
+### Configuration source
+
+`RedisClientFactory` reads from the framework's config (`Config::get('redis.*')` on FuelPHP), not from `getenv()` directly. Defaults live in `app/config/redis.php` in code; env variables only override. This makes per-environment overrides composable (FuelPHP's `app/config/{development,test}/redis.php` cascade) and keeps the factory free of env knowledge. Same pattern as `Blade` (`app/classes/blade.php`).
+
+**Do not delete `db.redis.default` from `fuelphp/fuel/app/config/db.php`** — FuelPHP core (`Session_Redis` via `Redis_Db`) consumes it directly with its own array shape; it is not interchangeable with `redis.php`.
 
 ### Pipeline isn't included
 

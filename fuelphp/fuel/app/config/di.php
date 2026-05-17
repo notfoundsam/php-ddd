@@ -57,7 +57,7 @@ use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
 use SharedKernel\Infrastructure\Logger\LoggerFactory;
 use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
 use Infrastructure\Notification\SmsNotifierFactory;
-use SharedKernel\Infrastructure\Redis\RedisClientFactory;
+use Infrastructure\Redis\RedisClientFactory;
 use SharedKernel\Infrastructure\Storage\CdnUrlResolver;
 use SharedKernel\Infrastructure\Storage\StorageFactory;
 use SharedKernel\Infrastructure\Throttle\ThrottleConfigDefaults;
