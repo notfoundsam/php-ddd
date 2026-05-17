@@ -12,11 +12,12 @@
             "dist": {
                 "type": "path",
                 "url": "../backend",
-                "reference": "a357674dd5515ae695f0fc6b1a9c8a57d26b1d04"
+                "reference": "95bc9fccb3d7c4e3f1ceabb4eea3379f8465f03e"
             },
             "require": {
                 "php": "^7.4",
-                "psr/container": "^1.1"
+                "psr/container": "^1.1",
+                "psr/http-message": "^1.1 || ^2.0"
             },
             "require-dev": {
                 "phpcompatibility/php-compatibility": "^9.3",

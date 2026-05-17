@@ -1,71 +1,88 @@
 # ADR-003: Storage Module Design
 
 **Status:** Accepted
-**Date:** 2026-03-22
+**Date:** 2026-05-17 (supersedes 2026-03-22 version)
 
 ## Context
 
-The project needs a file storage abstraction that works across multiple framework applications through the SharedKernel. Storage must support AWS S3 in production/staging and local filesystem in development, with CDN URL resolution for public assets.
+The project needs a file-storage abstraction shared between two framework applications (FuelPHP and Laravel) running off the same domain layer. Requirements:
 
-Flysystem was considered but not adopted — it would add a heavy dependency to the framework-agnostic domain layer and provides more abstraction than needed for our use case.
+- AWS S3 in cloud environments, local filesystem in development.
+- The two PHP containers in dev must read each other's writes — files uploaded from FuelPHP must be visible to Laravel and vice versa, mirroring the S3 model where both apps point at one bucket.
+- The local CDN (`images.php-ddd.test`) must serve the same directory in dev.
+- Framework-specific configuration (bucket, region, root path) must come through each framework's native config layer (`Config::get(...)` on FuelPHP, `config(...)` on Laravel), not through `getenv()` calls inside framework-neutral code (CLAUDE.md rule, also applied to Redis and Logger).
+
+Flysystem 3.x requires PHP 8.0+. FuelPHP runs on PHP 7.4 for the duration of the migration; Flysystem 1.x and 2.x are EOL. Until the FuelPHP side retires, Flysystem is not adopted — Laravel's eventual side will use `Storage::disk(...)` (Flysystem under the hood) wrapped in `StorageInterface`.
 
 ## Decision
 
-### Framework-agnostic LocalStorage
+### Layer split
 
-`LocalStorage` uses plain PHP functions (`file_get_contents`, `file_put_contents`, `mkdir`, `unlink`) instead of framework-specific file helpers. This avoids coupling to any framework and eliminates the need for separate implementations per framework.
+`StorageInterface`, `StorageException`, `CdnUrlResolver`, and `StringStorageTrait` live in `backend/src/SharedKernel/{Domain,Infrastructure}/Storage/`. They have no framework dependencies and are shared by both apps.
 
-The storage base path is defined as a constant (`/app/storage/`) since all framework applications share the same Docker volume.
+Concrete adapters and the factory live in each framework's directory:
+
+- FuelPHP: `fuelphp/fuel/packages/infrastructure/classes/Storage/` — `LocalStorage`, `S3Storage`, `S3ClientFactory`, `StorageFactory` under namespace `Infrastructure\Storage`.
+- Laravel (when implemented): a thin wrapper over `Storage::disk(...)` exposing the same `StorageInterface`.
+
+Duplication of `LocalStorage`/`S3Storage` between FuelPHP and Laravel is accepted while two PHP versions coexist. The trait + interface guarantee identical path-validation semantics, exception mapping, and S3 behavioural quirks.
+
+### Configuration cascade
+
+`fuelphp/fuel/app/config/storage.php` declares defaults in code (`driver=s3`, root, bucket, region) with `getenv(...)` only as override. Per-env files (`config/development/storage.php`, `config/test/storage.php`) override `driver=local` and the local root. The factory calls `Config::load('storage', true)` and reads `Config::get('storage.*')` — driver selection is not derived from `Environment::isCloudLike()`; it's the config cascade.
+
+`LocalStorage` root is a constructor parameter (`storage.local.root`), not a hard-coded constant. The test environment writes to `/tmp/php-ddd-storage-test` to avoid polluting the shared dev volume.
 
 ### Stream-based interface
 
-`StorageInterface` uses `Psr\Http\Message\StreamInterface` for `put()` and `get()`. This avoids loading entire files into memory and works naturally with S3's streaming API. Convenience methods (`putString`, `getString`, `putFile`) are provided via `StringStorageTrait` for common cases.
+`StorageInterface::put`/`get` use `Psr\Http\Message\StreamInterface`. This avoids loading entire files into memory and works naturally with S3's streaming API. `psr/http-message` is declared in `backend/composer.json` for the same reason `psr/container` is — it's an interface-only package, not an implementation. `StringStorageTrait` provides `putString`/`getString`/`putFile` convenience methods over the stream API.
 
-### Path traversal protection
+### Path-traversal protection
 
-All storage implementations validate paths through `buildFullPath()` in `StringStorageTrait`, which rejects any path containing `..` segments. This prevents directory traversal attacks where a caller could access files outside the storage root (e.g., `../../etc/passwd`). The validation applies to both S3 (preventing access to unintended bucket keys) and local storage.
+`StringStorageTrait::buildFullPath()` rejects any path containing `..` segments (`(^|/)\.\.(/|$)`). The check applies to both local (file-system traversal) and S3 (unintended bucket keys) and runs on every storage operation.
 
-### Exception chaining
+### Behavioural consistency between adapters
 
-`StorageException` factory methods accept an optional `$previous` parameter to chain the original exception. The implementations log the original exception and re-throw a `StorageException` with the cause attached, preserving the full error chain for debugging.
+- `S3Storage::delete()` calls `exists()` first because S3 silently succeeds when deleting non-existent keys; `LocalStorage::delete()` throws on missing files. Both adapters surface `StorageException::fileNotFound()` consistently.
+- `S3Storage::exists()` returns `false` only on HTTP 404; other S3 errors (network, permission denied) are re-thrown rather than masked.
+- `S3Storage::copy()` URL-encodes each path segment of the source key individually, preserving `/` separators while encoding spaces and `+` as the S3 CopySource header requires.
+- `StorageException` factory methods accept a `$previous` exception; adapters log the original error and re-throw with the cause chained.
 
-### Behavioral consistency between implementations
+### CDN URL resolution
 
-`S3Storage::delete()` checks file existence before calling `deleteObject` because S3 silently succeeds when deleting non-existent keys. This ensures both implementations throw `StorageException::fileNotFound()` consistently, matching the interface contract.
+`CdnUrlResolver` takes `array<string, string> $mappings` (prefix → CDN base URL) via constructor. The DI container provides per-environment mappings. No `Environment` dependency, no hard-coded domains.
 
-`S3Storage::exists()` only returns `false` for 404 responses. Other S3 errors (network failures, permission denied) are re-thrown rather than silently returning `false`.
+### Dev environment: shared `./storage/` mount
 
-### CdnUrlResolver decoupled from Environment
+A top-level `./storage/` directory at the repo root is mounted as `/app/storage` in both `fuelphp` and `laravel` services so files written by either container are visible to the other. The local CDN nginx (`images.php-ddd.test`) mounts it as `/usr/share/nginx/html:ro` to serve user-uploaded content. Frontend assets remain reachable through the main app nginx at `/build/...` and `/assets/...` — the local CDN is now exclusively for user uploads, matching the S3+CloudFront production model.
 
-`CdnUrlResolver` accepts a `array<string, string> $mappings` (prefix => CDN base URL) via constructor instead of reading environment-specific configuration internally. The DI container provides the correct mappings per environment. This removes the `Environment` dependency and avoids hardcoded domain names.
-
-### Environment variable validation in StorageFactory
-
-`StorageFactory` validates `AWS_BUCKET` and `AWS_DEFAULT_REGION` environment variables before creating `S3Storage`, throwing `InvalidArgumentException` with a clear message if either is missing. Variable names follow AWS SDK conventions for consistency across the project.
-
-### S3 CopySource URL encoding
-
-`S3Storage::copy()` URL-encodes each path segment of the source key individually, preserving `/` separators while encoding special characters (spaces, `+`, etc.) as required by the S3 API.
-
-## Architecture
+## Layout
 
 ```
-Domain/Storage/
-  StorageInterface.php        # Stream-based storage contract
-  StorageException.php        # Operation failure exceptions with chaining
+backend/src/SharedKernel/
+  Domain/Storage/
+    StorageInterface.php          # Stream-based contract (PSR-7)
+    StorageException.php          # Operation failures with cause chaining
+  Infrastructure/Storage/
+    CdnUrlResolver.php            # Path prefix → CDN URL mapping
+    StringStorageTrait.php        # buildFullPath + put/getString/putFile
 
-Infrastructure/Storage/
-  LocalStorage.php            # Framework-agnostic local filesystem
-  S3Storage.php               # AWS S3 implementation
-  StringStorageTrait.php      # putString/getString/putFile + buildFullPath
-  StorageFactory.php          # Creates storage based on environment
-  S3ClientFactory.php         # Creates S3Client with configurable region
-  CdnUrlResolver.php          # Maps storage paths to CDN URLs
+fuelphp/fuel/packages/infrastructure/classes/Storage/
+  LocalStorage.php                # PHP-native filesystem, root from config
+  S3Storage.php                   # AWS S3 adapter
+  S3ClientFactory.php             # Creates Aws\S3\S3Client per region
+  StorageFactory.php              # Reads Config::get('storage.*'), picks adapter
+
+fuelphp/fuel/app/config/
+  storage.php                     # Defaults + getenv overrides
+  development/storage.php         # driver=local
+  test/storage.php                # driver=local, root=/tmp/...
 ```
 
 ## Consequences
 
-- Both implementations share path validation and string convenience methods via trait
-- Adding a new storage backend (e.g., EFS, vendor S3) means implementing `StorageInterface` and updating `StorageFactory`
-- CDN mappings must be configured in DI per environment
-- `LocalStorage` is tied to `/app/storage/` constant — if the path needs to vary, it should become a constructor parameter
+- Both adapters share path validation and string helpers via the trait; the interface contract is enforced uniformly.
+- New storage backends (EFS, vendor S3) require an `Infrastructure\Storage` adapter and an additional `driver=...` branch in the factory.
+- Adding the Laravel-side implementation is a separate task; the contract is already stable.
+- `backend/` no longer references `aws/aws-sdk-php` even from its own source; the dependency stays declared in `fuelphp/composer.json` only.
+- Misconfiguration (missing bucket/region/root, unknown driver) fails fast at container boot, not at first I/O.

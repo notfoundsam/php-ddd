@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Storage;
+namespace Infrastructure\Storage;
 
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
@@ -12,6 +12,7 @@ use Psr\Http\Message\StreamInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Storage\StorageException;
 use SharedKernel\Domain\Storage\StorageInterface;
+use SharedKernel\Infrastructure\Storage\StringStorageTrait;
 
 final class S3Storage implements StorageInterface
 {
