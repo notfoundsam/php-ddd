@@ -49,7 +49,7 @@ final class TwilioSmsNotifier implements SmsNotifierInterface
         ];
 
         if ($message->hasStatusCallback() && $this->callbackUrl !== null) {
-            $options['statusCallback'] = $this->callbackUrl . '/sms-main';
+            $options['statusCallback'] = $this->callbackUrl . '/twilio-callback';
         }
 
         try {
