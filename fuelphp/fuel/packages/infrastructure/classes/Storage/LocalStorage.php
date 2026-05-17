@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Storage;
+namespace Infrastructure\Storage;
 
 use Exception;
 use GuzzleHttp\Psr7\Utils;
@@ -16,13 +16,13 @@ final class LocalStorage implements StorageInterface
 {
     use StringStorageTrait;
 
-    private const STORAGE_PATH = '/app/storage/';
-
     private LoggerInterface $logger;
+    private string $root;
 
-    public function __construct(LoggerInterface $logger)
+    public function __construct(LoggerInterface $logger, string $root)
     {
         $this->logger = $logger;
+        $this->root = rtrim($root, '/') . '/';
     }
 
     public function put(string $path, StreamInterface $stream): void
@@ -52,7 +52,7 @@ final class LocalStorage implements StorageInterface
         }
 
         $fullPath = $this->buildFullPath($path);
-        $storagePath = self::STORAGE_PATH . $fullPath;
+        $storagePath = $this->root . $fullPath;
 
         if (!file_exists($storagePath)) {
             throw StorageException::fileNotFound($path);
@@ -81,7 +81,7 @@ final class LocalStorage implements StorageInterface
         }
 
         $fullPath = $this->buildFullPath($path);
-        $storagePath = self::STORAGE_PATH . $fullPath;
+        $storagePath = $this->root . $fullPath;
 
         if (!file_exists($storagePath)) {
             throw StorageException::fileNotFound($path);
@@ -108,9 +108,8 @@ final class LocalStorage implements StorageInterface
         }
 
         $fullPath = $this->buildFullPath($path);
-        $storagePath = self::STORAGE_PATH . $fullPath;
 
-        return file_exists($storagePath);
+        return file_exists($this->root . $fullPath);
     }
 
     public function getSize(string $path): int
@@ -120,7 +119,7 @@ final class LocalStorage implements StorageInterface
         }
 
         $fullPath = $this->buildFullPath($path);
-        $storagePath = self::STORAGE_PATH . $fullPath;
+        $storagePath = $this->root . $fullPath;
 
         if (!file_exists($storagePath)) {
             throw StorageException::fileNotFound($path);
@@ -137,7 +136,7 @@ final class LocalStorage implements StorageInterface
 
         $fullFromPath = $this->buildFullPath($from);
         $fullToPath = $this->buildFullPath($to);
-        $storageFromPath = self::STORAGE_PATH . $fullFromPath;
+        $storageFromPath = $this->root . $fullFromPath;
 
         if (!file_exists($storageFromPath)) {
             throw StorageException::fileNotFound($from);
@@ -161,11 +160,11 @@ final class LocalStorage implements StorageInterface
 
     private function saveFile(string $path, string $content): void
     {
-        $storagePath = self::STORAGE_PATH . $path;
+        $storagePath = $this->root . $path;
         $directory = dirname($storagePath);
 
         if (!is_dir($directory)) {
-            if (!mkdir($directory, 0755, true)) {
+            if (!mkdir($directory, 0755, true) && !is_dir($directory)) {
                 throw new Exception("Failed to create directory: $directory");
             }
         }

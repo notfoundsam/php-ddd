@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SharedKernel\Infrastructure\Storage;
+namespace Infrastructure\Storage;
 
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;

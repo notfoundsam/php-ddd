@@ -162,6 +162,7 @@ services:
       - ./backend:/app/backend
       - ./fuelphp:/app/fuelphp
       - ./frontend/dist:/app/fuelphp/public/build:ro
+      - ./storage:/app/storage
       - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./docker/php-fpm-docker.conf:/usr/local/etc/php-fpm.d/zzz-docker.conf
     networks:
@@ -187,6 +188,7 @@ services:
       - ./backend:/app/backend
       - ./laravel:/app/laravel
       - ./frontend/dist:/app/laravel/public/build:ro
+      - ./storage:/app/storage
       - ./docker/php-custom.ini:/usr/local/etc/php/conf.d/custom.ini
       - ./docker/php-fpm-docker.conf:/usr/local/etc/php-fpm.d/zzz-docker.conf
     networks:
@@ -210,7 +212,7 @@ services:
   cdn:
     image: nginx:alpine
     volumes:
-      - ./fuelphp/public/assets:/usr/share/nginx/html:ro
+      - ./storage:/usr/share/nginx/html:ro
       - ./dev-tools/cdn-nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - php-ddd

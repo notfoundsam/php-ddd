@@ -60,8 +60,8 @@ use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
 use Infrastructure\Notification\SmsNotifierFactory;
 use Infrastructure\Redis\RedisClientFactory;
 use Infrastructure\Redis\RedisMasterClientFactory;
+use Infrastructure\Storage\StorageFactory;
 use SharedKernel\Infrastructure\Storage\CdnUrlResolver;
-use SharedKernel\Infrastructure\Storage\StorageFactory;
 use SharedKernel\Infrastructure\Throttle\ThrottleConfigDefaults;
 use SharedKernel\Infrastructure\Throttle\ThrottleConfigResolver;
 use SharedKernel\Infrastructure\Throttle\ThrottleDriverFactory;
@@ -83,10 +83,7 @@ $containerBuilder->addDefinitions(array_merge([
     CdnUrlResolver::class => DI\autowire(CdnUrlResolver::class)->constructor([
         'public/images/' => getenv('CDN_IMAGES_URL') ?: '',
     ]),
-    StorageFactory::class => DI\autowire(StorageFactory::class),
-    StorageInterface::class => DI\factory(function (ContainerInterface $c) {
-        return $c->get(StorageFactory::class)->create();
-    }),
+    StorageInterface::class => DI\factory(StorageFactory::class),
 
     // Security & Request Context
     SecurityContextInterface::class => DI\autowire(FuelPhpSecurityContext::class),
