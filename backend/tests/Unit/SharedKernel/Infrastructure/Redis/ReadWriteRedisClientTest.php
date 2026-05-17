@@ -152,20 +152,6 @@ class ReadWriteRedisClientTest extends TestCase
         $this->assertTrue($this->client->setnx('lock', '1', 30));
     }
 
-    // --- getMaster always routes to write client ---
-
-    public function testGetMasterRoutesToWriteClient(): void
-    {
-        $this->writeClient->expects($this->once())
-            ->method('get')
-            ->with('key1')
-            ->willReturn('value1');
-
-        $this->readClient->expects($this->never())->method('get');
-
-        $this->assertSame('value1', $this->client->getMaster('key1'));
-    }
-
     // --- Failover from replica to master ---
 
     public function testGetFailsOverToMasterOnReplicaError(): void

@@ -6,12 +6,49 @@ namespace Infrastructure\Redis;
 
 use Redis;
 use RedisException;
+use RuntimeException;
 use SharedKernel\Domain\Redis\Exceptions\RedisConnectionException;
-use SharedKernel\Domain\Redis\RedisClientInterface;
+use SharedKernel\Domain\Redis\RedisMasterClientInterface;
 
-class PhpRedisClient implements RedisClientInterface
+class PhpRedisClient implements RedisMasterClientInterface
 {
+    /**
+     * Maps config section to the env variable that ultimately backs its host.
+     * Used in the misconfiguration exception so on-call can grep the codebase
+     * for the env name they see in the alert.
+     */
+    private const HOST_ENV_BY_SECTION = [
+        'primary' => 'REDIS_PRIMARY_ENDPOINT',
+        'reader'  => 'REDIS_READER_ENDPOINT',
+    ];
+
     private Redis $client;
+
+    /**
+     * Build a client from a redis.php config section.
+     *
+     * @param array<string,mixed> $cfg
+     * @throws RuntimeException When the host is empty (misconfiguration).
+     */
+    public static function fromConfigSection(array $cfg, string $section): self
+    {
+        if (empty($cfg['host'])) {
+            $envName = self::HOST_ENV_BY_SECTION[$section] ?? '<unknown>';
+            throw new RuntimeException(sprintf(
+                'redis.%s.host is not configured (env %s)',
+                $section,
+                $envName
+            ));
+        }
+
+        return new self(new RedisConfig(
+            (string) $cfg['host'],
+            (int) ($cfg['port'] ?? 6379),
+            (int) ($cfg['database'] ?? 0),
+            (float) ($cfg['timeout'] ?? 5.0),
+            (string) ($cfg['connection_type'] ?? 'default')
+        ));
+    }
 
     public function __construct(RedisConfig $config)
     {
@@ -167,10 +204,5 @@ class PhpRedisClient implements RedisClientInterface
         } catch (RedisException $e) {
             throw RedisConnectionException::operationFailed('SETNX', $e->getMessage());
         }
-    }
-
-    public function getMaster(string $key): ?string
-    {
-        return $this->get($key);
     }
 }

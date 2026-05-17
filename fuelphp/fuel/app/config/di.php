@@ -30,6 +30,7 @@ use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Notification\Channel\EmailNotifierInterface;
 use SharedKernel\Domain\Notification\Channel\SmsNotifierInterface;
 use SharedKernel\Domain\Redis\RedisClientInterface;
+use SharedKernel\Domain\Redis\RedisMasterClientInterface;
 use SharedKernel\Domain\Security\AuthorizationServiceInterface;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
@@ -58,6 +59,7 @@ use SharedKernel\Infrastructure\Logger\LoggerFactory;
 use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
 use Infrastructure\Notification\SmsNotifierFactory;
 use Infrastructure\Redis\RedisClientFactory;
+use Infrastructure\Redis\RedisMasterClientFactory;
 use SharedKernel\Infrastructure\Storage\CdnUrlResolver;
 use SharedKernel\Infrastructure\Storage\StorageFactory;
 use SharedKernel\Infrastructure\Throttle\ThrottleConfigDefaults;
@@ -76,6 +78,7 @@ $containerBuilder->addDefinitions(array_merge([
     Environment::class => DI\autowire(Environment::class)->constructor(Fuel::$env, getenv('TEST_ENV_ID') ?: null),
     LoggerInterface::class => DI\factory(LoggerFactory::class),
     RedisClientInterface::class => DI\factory(RedisClientFactory::class),
+    RedisMasterClientInterface::class => DI\factory(RedisMasterClientFactory::class),
     CacheInterface::class => DI\factory(CacheFactory::class),
     CdnUrlResolver::class => DI\autowire(CdnUrlResolver::class)->constructor([
         'public/images/' => getenv('CDN_IMAGES_URL') ?: '',

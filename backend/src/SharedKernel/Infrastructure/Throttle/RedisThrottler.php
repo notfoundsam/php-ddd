@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\Throttle;
 
 use SharedKernel\Domain\Redis\Exceptions\RedisConnectionException;
-use SharedKernel\Domain\Redis\RedisClientInterface;
+use SharedKernel\Domain\Redis\RedisMasterClientInterface;
 use SharedKernel\Domain\Throttle\Exceptions\ThrottleDriverException;
 use SharedKernel\Domain\Throttle\ThrottleConfig;
 use SharedKernel\Domain\Throttle\ThrottleInterface;
@@ -15,11 +15,11 @@ class RedisThrottler implements ThrottleInterface
 {
     private const REDIS_KEY_PREFIX = 'throttle';
 
-    protected RedisClientInterface $redis;
+    protected RedisMasterClientInterface $redis;
     protected ThrottleConfig $config;
     protected string $type;
 
-    public function __construct(RedisClientInterface $redis, ThrottleConfig $config, string $type)
+    public function __construct(RedisMasterClientInterface $redis, ThrottleConfig $config, string $type)
     {
         $this->redis = $redis;
         $this->config = $config;
@@ -92,7 +92,7 @@ class RedisThrottler implements ThrottleInterface
     private function isBlocked(string $identifier): bool
     {
         $blockedKey = self::REDIS_KEY_PREFIX . ":$this->type:$identifier:blocked";
-        $blockedUntil = $this->redis->getMaster($blockedKey);
+        $blockedUntil = $this->redis->get($blockedKey);
 
         return $blockedUntil !== null && (int) $blockedUntil > time();
     }
@@ -100,7 +100,7 @@ class RedisThrottler implements ThrottleInterface
     private function getBlockedUntil(string $identifier): int
     {
         $blockedKey = self::REDIS_KEY_PREFIX . ":$this->type:$identifier:blocked";
-        $blockedUntil = $this->redis->getMaster($blockedKey);
+        $blockedUntil = $this->redis->get($blockedKey);
 
         return $blockedUntil !== null ? (int) $blockedUntil : 0;
     }
