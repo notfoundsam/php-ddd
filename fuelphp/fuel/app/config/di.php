@@ -55,7 +55,7 @@ use SharedKernel\Infrastructure\EventSystem\ListenerProviderFactory;
 use SharedKernel\Infrastructure\EventSystem\OutboxEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\ScheduledEventProcessor;
 use SharedKernel\Infrastructure\EventSystem\SqsAsyncEventProcessorFactory;
-use SharedKernel\Infrastructure\Logger\LoggerFactory;
+use Infrastructure\Logger\MonologLoggerFactory;
 use SharedKernel\Infrastructure\Notification\Email\SenderRegistry;
 use Infrastructure\Notification\SmsNotifierFactory;
 use Infrastructure\Redis\RedisClientFactory;
@@ -76,7 +76,7 @@ if (Fuel::$env !== Fuel::DEVELOPMENT && Fuel::$env !== Fuel::TEST) {
 
 $containerBuilder->addDefinitions(array_merge([
     Environment::class => DI\autowire(Environment::class)->constructor(Fuel::$env, getenv('TEST_ENV_ID') ?: null),
-    LoggerInterface::class => DI\factory(LoggerFactory::class),
+    LoggerInterface::class => DI\factory(MonologLoggerFactory::class),
     RedisClientInterface::class => DI\factory(RedisClientFactory::class),
     RedisMasterClientInterface::class => DI\factory(RedisMasterClientFactory::class),
     CacheInterface::class => DI\factory(CacheFactory::class),

@@ -4,31 +4,16 @@ declare(strict_types=1);
 
 namespace SharedKernel\Infrastructure\Logger;
 
-use Monolog\Formatter\JsonFormatter;
-use Monolog\Handler\RotatingFileHandler;
-use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use SharedKernel\Domain\Environment;
 use SharedKernel\Domain\Logger\LoggerInterface;
 
 class MonologLogger implements LoggerInterface
 {
-    private const LOG_FILE_PATH = '/app/fuelphp/fuel/app/logs/app.log';
-
     private Logger $logger;
 
-    public function __construct(Environment $environment)
+    public function __construct(Logger $logger)
     {
-        $this->logger = new Logger('php-ddd-' . $environment->getValue());
-
-        if ($environment->isDevelopment()) {
-            $streamHandler = new RotatingFileHandler(self::LOG_FILE_PATH, 7, Logger::DEBUG);
-        } else {
-            $streamHandler = new StreamHandler('php://stdout', Logger::INFO);
-            $streamHandler->setFormatter(new JsonFormatter());
-        }
-
-        $this->logger->pushHandler($streamHandler);
+        $this->logger = $logger;
     }
 
     public function emergency(string $message, array $context = []): void
