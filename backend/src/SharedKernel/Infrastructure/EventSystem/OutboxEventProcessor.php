@@ -11,20 +11,20 @@ use SharedKernel\Domain\Logger\LoggerInterface;
 
 final class OutboxEventProcessor extends AbstractEventProcessor implements OutboxEventProcessorInterface
 {
-    private EventRepositoryInterface $repository;
+    private EventRepositoryInterface $events;
 
     public function __construct(
-        EventRepositoryInterface $repository,
+        EventRepositoryInterface $events,
         ListenerProviderInterface $listenerProvider,
         LoggerInterface $logger
     ) {
         parent::__construct($listenerProvider, $logger);
-        $this->repository = $repository;
+        $this->events = $events;
     }
 
     protected function getRepository(): EventRepositoryInterface
     {
-        return $this->repository;
+        return $this->events;
     }
 
     protected function getEventTypeLabel(): string

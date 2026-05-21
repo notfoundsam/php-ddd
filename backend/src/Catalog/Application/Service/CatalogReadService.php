@@ -26,11 +26,11 @@ final class CatalogReadService
     private const PER_PAGE_FALLBACK = 12;
     private const PAGE_HARD_CAP = 10000;
 
-    private ProductRepositoryInterface $repository;
+    private ProductRepositoryInterface $products;
 
-    public function __construct(ProductRepositoryInterface $repository)
+    public function __construct(ProductRepositoryInterface $products)
     {
-        $this->repository = $repository;
+        $this->products = $products;
     }
 
     public function searchProducts(SearchFilters $filters, int $page, int $perPage): ProductSearchResult
@@ -41,9 +41,9 @@ final class CatalogReadService
         $page = min(max(1, $page), self::PAGE_HARD_CAP);
         $perPage = $perPage < 1 ? self::PER_PAGE_FALLBACK : $perPage;
 
-        $result = $this->repository->findByFilters($filters, $page, $perPage);
+        $result = $this->products->findByFilters($filters, $page, $perPage);
 
-        $facets = $this->repository->getFacets();
+        $facets = $this->products->getFacets();
         $brandsById = $this->indexBrandsById($facets['brands']);
         $categoriesById = $this->indexCategoriesById($facets['categories']);
 
@@ -57,7 +57,7 @@ final class CatalogReadService
 
     public function getFilterFacets(): FilterFacets
     {
-        $facets = $this->repository->getFacets();
+        $facets = $this->products->getFacets();
 
         return new FilterFacets(
             $facets['categories'],
