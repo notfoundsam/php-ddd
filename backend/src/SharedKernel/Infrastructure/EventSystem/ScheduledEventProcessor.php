@@ -19,20 +19,20 @@ use SharedKernel\Domain\Logger\LoggerInterface;
  */
 final class ScheduledEventProcessor extends AbstractEventProcessor implements ScheduledEventProcessorInterface
 {
-    private EventRepositoryInterface $scheduledEventRepository;
+    private EventRepositoryInterface $events;
 
     public function __construct(
-        EventRepositoryInterface $scheduledEventRepository,
+        EventRepositoryInterface $events,
         ListenerProviderInterface $listenerProvider,
         LoggerInterface $logger
     ) {
         parent::__construct($listenerProvider, $logger);
-        $this->scheduledEventRepository = $scheduledEventRepository;
+        $this->events = $events;
     }
 
     protected function getRepository(): EventRepositoryInterface
     {
-        return $this->scheduledEventRepository;
+        return $this->events;
     }
 
     protected function getEventTypeLabel(): string

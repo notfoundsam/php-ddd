@@ -17,20 +17,20 @@ use SharedKernel\Domain\Logger\LoggerInterface;
  */
 final class AsyncEventProcessor extends AbstractEventProcessor implements AsyncEventProcessorInterface
 {
-    private AsyncRepositoryInterface $asyncEventRepository;
+    private AsyncRepositoryInterface $events;
 
     public function __construct(
-        AsyncRepositoryInterface $asyncEventRepository,
+        AsyncRepositoryInterface $events,
         ListenerProviderInterface $listenerProvider,
         LoggerInterface $logger
     ) {
         parent::__construct($listenerProvider, $logger);
-        $this->asyncEventRepository = $asyncEventRepository;
+        $this->events = $events;
     }
 
     protected function getRepository(): EventRepositoryInterface
     {
-        return $this->asyncEventRepository;
+        return $this->events;
     }
 
     protected function getEventTypeLabel(): string
