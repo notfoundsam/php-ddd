@@ -514,7 +514,8 @@ return array(
 		 */
 
 		'config' => [
-            'vite'
+            'vite',
+            'audience',
         ],
 
 		/**

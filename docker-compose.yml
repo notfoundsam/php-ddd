@@ -34,6 +34,8 @@ x-fuelphp-env: &fuelphp-env
   <<: *shared-env
   FUEL_ENV: development
   APP_URL: https://php-ddd.test/
+  APP_URL_ADMIN: https://admin.php-ddd.test/
+  APP_URL_PARTNER: https://partner.php-ddd.test/
   APP_CIPHER_KEY: 8218bc92e8f238e544019f211de3e7f6c143d781b3e25f0f35863833f371f9d9
   APP_TOKEN_SALT: R2AvvgZcNEmmY6wbhPBMma4amsdUvHnLWvijER3a
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Audience\Admin\Infrastructure\Security;
 
+use Audience\Admin\Application\Command\Auth\LogInCommand;
+use Audience\Admin\Application\Command\Auth\LogOutCommand;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
 
 final class AdminSecurityConfig implements SecurityConfigInterface
@@ -15,9 +17,10 @@ final class AdminSecurityConfig implements SecurityConfigInterface
 
     public function getCommandPermissions(): array
     {
-        // TODO: register Admin commands here, e.g.
-        //   CreateInvoiceCommand::class => 'admin.invoice.create',
-        return [];
+        return [
+            LogInCommand::class => null,
+            LogOutCommand::class => null,
+        ];
     }
 
     public function getQueryPermissions(): array

@@ -4,16 +4,28 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Audience\Admin\Infrastructure\Security;
 
+use Audience\Admin\Application\Command\Auth\LogInCommand;
+use Audience\Admin\Application\Command\Auth\LogOutCommand;
 use Audience\Admin\Infrastructure\Security\AdminSecurityConfig;
 use PHPUnit\Framework\TestCase;
 
 class AdminSecurityConfigTest extends TestCase
 {
-    public function testCommandAndQueryPermissionsAreEmptyForNow(): void
+    public function testLoginAndLogoutCommandsAreRegisteredAsPublic(): void
     {
         $config = new AdminSecurityConfig();
 
-        $this->assertSame([], $config->getCommandPermissions());
+        $commands = $config->getCommandPermissions();
+        $this->assertArrayHasKey(LogInCommand::class, $commands);
+        $this->assertArrayHasKey(LogOutCommand::class, $commands);
+        $this->assertNull($commands[LogInCommand::class]);
+        $this->assertNull($commands[LogOutCommand::class]);
+    }
+
+    public function testQueryPermissionsAreEmptyForNow(): void
+    {
+        $config = new AdminSecurityConfig();
+
         $this->assertSame([], $config->getQueryPermissions());
     }
 
