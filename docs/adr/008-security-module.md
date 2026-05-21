@@ -54,14 +54,15 @@ The codebase's existing `CommandHandlerRegistryInterface` (ADR-006) currently li
 
 ### Authentication is Per-Driver, Hidden Behind `UserResolverInterface`
 
-A single domain interface — `UserResolverInterface::resolve(): ?AuthenticatedUser` — hides how the current user is identified for a request. Each framework/driver provides its own implementation:
-- FuelPHP partner portal: `FuelPhpAuthUserResolver` reads the SimpleAuth driver via `\Auth::check()`, `\Auth::instance()->get_user_id()` / `get_email()`, and `\Auth::group()->get_roles()`. Roles are the string names declared in `simpleauth.groups[<id>].roles`.
-- Future Cognito admin: a JWT-verifying resolver reads claims from the `Authorization` header.
-- Future Laravel customer: a resolver calling `Auth::user()`.
+A single domain interface — `UserResolverInterface::resolve(): ?AuthenticatedUser` — hides how the current user is identified for a request. Each framework/driver provides its own implementation. Per [ADR-014](014-multi-audience-local-authentication.md), three per-audience resolvers are live today:
+
+- `AdminSessionResolver`, `PartnerSessionResolver`, `SiteSessionResolver` (all in `Infrastructure\Security\Resolver\`) — try the per-audience server-side session first, fall back to remember-me token reanimation, repopulate the session on success. Each `Controller_<Audience>_Abstract::before()` resolves the matching concrete and writes the user into `SecurityContextInterface`.
+- Future Cognito admin: an SDK-backed `AdminPasswordVerifierInterface` implementation. The session/resolver layer stays the same — only credential verification swaps.
+- Future Laravel customer: a Laravel-side `UserResolverInterface` implementation calling `Auth::user()`.
 
 Login is **not** abstracted. Each module's login flow is framework-specific by definition; trying to share a login interface across drivers conflates separate concerns. The seam is the resolver, not login.
 
-A session-key indirection (login writes four keys, resolver reads them) was considered and rejected for the FuelPHP partner case. Going through `\Auth` directly is simpler given SimpleAuth is the chosen dev driver, and each future driver (Cognito, Laravel) writes its own resolver regardless. The resolver is partner-specific today; admin and customer resolvers will be added when those modules exist.
+The legacy `FuelPhpAuthUserResolver` (a SimpleAuth-reading single resolver) was the partner-only implementation before ADR-014 and is no longer bound in DI. It is kept in the repository as a reference of the SimpleAuth shape pending deletion in a follow-up cleanup.
 
 ### Decorator Chain Order
 
@@ -156,9 +157,10 @@ The following are explicitly **not** part of this module:
 | `SecurityCommandDecorator` | Infrastructure | `CommandBusInterface` decorator; enforces config-based authorization at dispatch. |
 | `SecurityQueryDecorator` | Infrastructure | `QueryBusInterface` decorator; same logic, different return type. |
 | `FuelPhpSecurityContext` | FuelPHP infra | Per-request `SecurityContext` storage. |
-| `FuelPhpAuthUserResolver` | FuelPHP infra | Reads SimpleAuth via `\Auth::check()` / `\Auth::instance()` / `\Auth::group()`. |
-| `AdminSecurityConfig` + `AdminSecurityConfigRegistry` | Admin audience | Roles `admin`, `staff`, `outsourcer`, `staff_invoice`; commands/queries to be added. |
-| `PartnerSecurityConfig` + `PartnerSecurityConfigRegistry` | Partner audience | Roles `partner_owner`, `partner_member`; commands/queries to be added. |
+| `AdminSessionResolver` / `PartnerSessionResolver` / `SiteSessionResolver` | FuelPHP infra | Per-audience `UserResolverInterface` impls per [ADR-014](014-multi-audience-local-authentication.md): try session first, fall back to remember-me reanimation. Wired in the matching `Controller_<Audience>_Abstract::before()`. |
+| `AdminSecurityConfig` + `AdminSecurityConfigRegistry` | Admin audience | Roles `admin`, `staff`, `outsourcer`, `staff_invoice`; `LogInCommand` / `LogOutCommand` registered as `null` permission (public). |
+| `PartnerSecurityConfig` + `PartnerSecurityConfigRegistry` | Partner audience | Roles `partner_owner`, `partner_member`; `LogInCommand` / `LogOutCommand` registered as `null` permission (public). |
+| `SiteSecurityConfig` + `SiteSecurityConfigRegistry` | Site audience | No roles today; `LogInCommand` / `LogOutCommand` and public catalog queries (`ViewCatalogHomePageQuery`, `SearchCatalogProductsQuery`) registered as `null` permission. |
 
 ## Consequences
 
@@ -184,10 +186,10 @@ The following are explicitly **not** part of this module:
 
 These are real questions raised during design that were intentionally not resolved:
 
-- **Multi-user-type session collision in dev.** When SimpleAuth is used for admin, partner, and customer simultaneously in the same browser, the default Auth instance and shared session keys conflict. Likely fix: namespaced session keys per user type (`admin.user_id`, `partner.user_id`, …) or named Auth instances (`\Auth::instance('admin')`). Not relevant until admin and customer modules exist alongside partner.
+- ~~**Multi-user-type session collision in dev.**~~ Resolved by [ADR-014](014-multi-audience-local-authentication.md): each audience now has its own session cookie name (`phpddd_admin`, `phpddd_partner`, `phpddd`) backed by distinct `Session::instance()` instances, plus a per-audience `*SessionAuthenticator` marker interface.
+- ~~**Env-based resolver swap (SimpleAuth dev → Cognito prod for admin).**~~ Superseded by [ADR-014](014-multi-audience-local-authentication.md): the legacy `FuelPhpAuthUserResolver` (SimpleAuth) was replaced by per-audience `AdminSessionResolver` / `PartnerSessionResolver` / `SiteSessionResolver`. The seam for future Cognito is now `AdminPasswordVerifierInterface` (the credential-check primitive) — swap the DI binding to a Cognito-backed implementation; the session layer stays untouched.
 - **Idle session timeout for authenticated users.** PHP sessions have one lifetime per session, not per key. If authenticated sessions need a different (typically shorter) idle window than anonymous sessions, the resolver must enforce a `last_activity` timestamp and clear the user's session keys when stale. Not implemented; defer until a real requirement (e.g., admin panel inactivity timeout) materializes.
-- **Env-based resolver swap (SimpleAuth dev → Cognito prod for admin).** When admin moves to Cognito in production, the admin resolver binding must vary by environment. Likely shape: a marker interface (`AdminUserResolverInterface`) bound via env-conditional DI factory. Not built today because no second admin implementation exists yet — adding the marker interface for one implementation would be premature.
-- **Where `Package::load('auth')` lives.** Currently called in the partner abstract controller's `before()` to lazy-load the FuelPHP Auth package. When more controllers need it, consider moving the call into the resolver itself so the controller stays neutral. Not a blocker; current placement works.
+- ~~**Where `Package::load('auth')` lives.**~~ Resolved by [ADR-014](014-multi-audience-local-authentication.md): SimpleAuth is no longer used; the FuelPHP `auth` package is no longer loaded at controller level.
 
 ### Future Work
 
