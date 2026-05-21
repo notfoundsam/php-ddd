@@ -24,11 +24,11 @@ return [
     'default' => [
         'type'        => 'mysqli',
         'connection'  => [
-            'hostname'   => getenv('DB_HOSTNAME'),
-            'port'       => getenv('DB_PORT') ?: 3306,
-            'database'   => getenv('DB_DB_NAME'),
-            'username'   => getenv('DB_USERNAME'),
-            'password'   => getenv('DB_PASSWORD'),
+            'hostname'   => getenv('RDS_HOSTNAME') ?: getenv('DB_HOSTNAME'),
+            'port'       => getenv('RDS_PORT') ?: (getenv('DB_PORT') ?: 3306),
+            'database'   => getenv('RDS_DB_NAME') ?: getenv('DB_DB_NAME'),
+            'username'   => getenv('RDS_USERNAME') ?: getenv('DB_USERNAME'),
+            'password'   => getenv('RDS_PASSWORD') ?: getenv('DB_PASSWORD'),
         ],
     ],
 
