@@ -244,7 +244,7 @@ services:
       - sms
 
   frontend:
-    image: node:20-alpine
+    image: node:24-alpine
     working_dir: /app/frontend
     command: sh -c "npm install --no-audit --no-fund && npm run watch"
     volumes:

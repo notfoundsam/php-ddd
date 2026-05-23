@@ -1,6 +1,6 @@
 ARG PHP_IMAGE=php:latest
 ARG COMPOSER_IMAGE=composer:latest
-ARG ASSETS_IMAGE=node:latest
+ARG ASSETS_IMAGE=node:24-alpine
 
 FROM $ASSETS_IMAGE AS assets
 WORKDIR /app
