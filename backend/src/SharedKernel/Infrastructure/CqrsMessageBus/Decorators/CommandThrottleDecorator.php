@@ -8,7 +8,6 @@ use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandInterface;
 use SharedKernel\Application\Http\RequestContextInterface;
 use SharedKernel\Application\Throttle\ThrottleConfigResolverInterface;
-use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
 use SharedKernel\Domain\Throttle\ThrottleFactoryInterface;
@@ -22,7 +21,6 @@ final class CommandThrottleDecorator implements CommandBusInterface
     private ThrottleConfigResolverInterface $throttleConfig;
     private SecurityContextInterface $securityContext;
     private RequestContextInterface $requestContext;
-    private AsyncEventProcessorInterface $asyncEventProcessor;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -31,7 +29,6 @@ final class CommandThrottleDecorator implements CommandBusInterface
         ThrottleConfigResolverInterface $throttleConfig,
         SecurityContextInterface $securityContext,
         RequestContextInterface $requestContext,
-        AsyncEventProcessorInterface $asyncEventProcessor,
         LoggerInterface $logger
     ) {
         $this->inner = $inner;
@@ -39,7 +36,6 @@ final class CommandThrottleDecorator implements CommandBusInterface
         $this->throttleConfig = $throttleConfig;
         $this->securityContext = $securityContext;
         $this->requestContext = $requestContext;
-        $this->asyncEventProcessor = $asyncEventProcessor;
         $this->logger = $logger;
     }
 

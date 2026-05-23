@@ -7,7 +7,6 @@ namespace Tests\Unit\SharedKernel\Infrastructure\CqrsMessageBus;
 use PHPUnit\Framework\TestCase;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
 use SharedKernel\Application\Throttle\ThrottleConfigResolverInterface;
-use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\EventSystem\DomainEventCollectorInterface;
 use SharedKernel\Domain\EventSystem\OutboxEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
@@ -87,7 +86,6 @@ final class CommandBusLazyDecoratorChainTest extends TestCase
             $throttleResolver,
             new StubSecurityContext(null),
             new StubRequestContext('10.0.0.1'),
-            $this->createMock(AsyncEventProcessorInterface::class),
             $logger
         );
 

@@ -19,8 +19,13 @@ require COREPATH . 'bootstrap.php';
     'Log' => APPPATH . 'classes/log.php',
 ));
 
-// Register the autoloader
-\Autoloader::register();
+// Register the FuelPHP autoloader as a fallback after Composer's. FuelPHP's
+// own Autoloader::register() prepends to the SPL stack, which forces every
+// composer-managed class lookup through Autoloader::lower + class_to_path
+// first — measurable hot-path cost. Composer's classmap+PSR-4 covers ~99%
+// of lookups; FuelPHP only needs to resolve its own classes (Fuel\Core\*,
+// Cookie, Log, etc.), so it runs last.
+\spl_autoload_register('Autoloader::load', true, false);
 
 /**
  * Your environment.  Can be set to any of the following:
@@ -32,11 +37,12 @@ require COREPATH . 'bootstrap.php';
  */
 Fuel::$env = Arr::get($_SERVER, 'FUEL_ENV', Arr::get($_ENV, 'FUEL_ENV', getenv('FUEL_ENV') ?: Fuel::DEVELOPMENT));
 
+// Initialize the framework first so always_load.packages register their
+// namespaces with the autoloader before PHP-DI compiles its container.
+\Fuel::init('config.php');
+
 // Load PHP-DI container
 $container = require APPPATH . 'config/di.php';
 
 // Make the container accessible globally
 $GLOBALS['container'] = $container;
-
-// Initialize the framework with the config file.
-\Fuel::init('config.php');

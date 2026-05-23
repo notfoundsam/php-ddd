@@ -193,7 +193,6 @@ $containerBuilder->addDefinitions(array_merge([
             $c->get(ThrottleConfigResolverInterface::class),
             $c->get(SecurityContextInterface::class),
             $c->get(RequestContextInterface::class),
-            $c->get(AsyncEventProcessorInterface::class),
             $c->get(LoggerInterface::class)
         );
     }),
@@ -215,7 +214,6 @@ $containerBuilder->addDefinitions(array_merge([
             $c->get(ThrottleConfigResolverInterface::class),
             $c->get(SecurityContextInterface::class),
             $c->get(RequestContextInterface::class),
-            $c->get(AsyncEventProcessorInterface::class),
             $c->get(LoggerInterface::class)
         );
     }),

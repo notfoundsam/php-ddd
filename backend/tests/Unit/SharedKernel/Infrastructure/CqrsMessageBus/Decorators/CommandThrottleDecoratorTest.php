@@ -7,7 +7,6 @@ namespace Tests\Unit\SharedKernel\Infrastructure\CqrsMessageBus\Decorators;
 use PHPUnit\Framework\TestCase;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
 use SharedKernel\Application\Throttle\ThrottleConfigResolverInterface;
-use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Throttle\Exceptions\ThrottleDriverException;
 use SharedKernel\Domain\Security\AuthenticatedUser;
@@ -39,7 +38,6 @@ class CommandThrottleDecoratorTest extends TestCase
         ThrottleConfigResolverInterface $throttleConfig,
         StubSecurityContext $securityContext,
         ?ThrottleFactoryInterface $throttleFactory = null,
-        ?AsyncEventProcessorInterface $asyncEventProcessor = null,
         ?LoggerInterface $logger = null,
         ?StubRequestContext $requestContext = null
     ): CommandThrottleDecorator {
@@ -49,7 +47,6 @@ class CommandThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $requestContext ?? new StubRequestContext('192.168.1.1'),
-            $asyncEventProcessor ?? $this->createMock(AsyncEventProcessorInterface::class),
             $logger ?? $this->createMock(LoggerInterface::class)
         );
     }
@@ -143,7 +140,6 @@ class CommandThrottleDecoratorTest extends TestCase
             $securityContext,
             $factory,
             null,
-            null,
             $requestContext
         );
         $decorator->dispatch(new TestCommand('test'));
@@ -213,13 +209,12 @@ class CommandThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $factory,
-            null,
             $logger
         );
         $decorator->dispatch(new TestCommand('test'));
     }
 
-    public function testWarningThresholdFiresEventAndStillDispatches(): void
+    public function testWarningThresholdLogsAndStillDispatches(): void
     {
         $inner = $this->createMock(CommandBusInterface::class);
         $inner->expects($this->once())->method('dispatch');
@@ -235,8 +230,38 @@ class CommandThrottleDecoratorTest extends TestCase
         $factory = $this->createMock(ThrottleFactoryInterface::class);
         $factory->method('create')->willReturn($throttler);
 
-        $asyncProcessor = $this->createMock(AsyncEventProcessorInterface::class);
-        $asyncProcessor->expects($this->once())->method('store');
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+
+        $user = new AuthenticatedUser('42', 'user@example.com', ['user'], UserType::CUSTOMER);
+        $securityContext = new StubSecurityContext($user);
+
+        $decorator = $this->createDecorator(
+            $inner,
+            $throttleConfig,
+            $securityContext,
+            $factory,
+            $logger
+        );
+        $decorator->dispatch(new TestCommand('test'));
+    }
+
+    public function testBlockLimitCrossedLogsAndThrows(): void
+    {
+        $inner = $this->createMock(CommandBusInterface::class);
+        $inner->expects($this->never())->method('dispatch');
+
+        $config = $this->createConfig();
+
+        $throttleConfig = $this->createMock(ThrottleConfigResolverInterface::class);
+        $throttleConfig->method('resolve')->willReturn(ThrottleResolveResult::forDefault($config));
+
+        // currentAttempts === blockLimit triggers fireBlockedEvent (one log call).
+        $throttler = $this->createMock(ThrottleInterface::class);
+        $throttler->method('attempt')->willReturn(ThrottleResult::blocked(600, $config->getBlockLimit()));
+
+        $factory = $this->createMock(ThrottleFactoryInterface::class);
+        $factory->method('create')->willReturn($throttler);
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
@@ -249,9 +274,10 @@ class CommandThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $factory,
-            $asyncProcessor,
             $logger
         );
+
+        $this->expectException(ThrottleException::class);
         $decorator->dispatch(new TestCommand('test'));
     }
 

@@ -37,7 +37,7 @@ The majority of commands use global defaults with zero configuration. Per-comman
 Throttle configuration is centralized in a config class (`ThrottleConfigDefaults`) rather than declared on individual commands/queries via a marker interface. A `ThrottleAwareInterface` was the initial implementation but was replaced because:
 - It scattered throttle policy across the codebase — each command declared its own limits
 - Commands carried identity resolution logic that belongs in infrastructure
-- Warning/block callbacks coupled commands to throttle mechanics — the decorator already handles events and exceptions
+- Warning/block callbacks coupled commands to throttle mechanics — the decorator already handles logging and exceptions
 - Adding or changing throttle rules required modifying command classes, not a single config
 - The project already uses centralized config for security permissions (Security.md) — throttle should follow the same pattern
 
@@ -84,16 +84,18 @@ Background event workers (ADR-005) process events through their own dispatch pat
 
 ### Decorator Chain Order
 
-The decorator chain order (outermost → innermost) is:
+The decorator chain (outermost → innermost):
 
 ```
-ThrottleDecorator → LoggerDecorator → TransactionDecorator → Handler
+Commands: Throttle → Security → Logger → Transaction → Handler
+Queries:  Throttle → Security → Logger → Handler
 ```
 
-(SecurityDecorator will be inserted between Throttle and Logger when the security module is implemented.)
+Queries skip the transaction decorator — read-only handlers have no domain event collection to commit.
 
-- **Throttle outermost** — reject abusers before any work. `SecurityContextInterface` is populated by the framework middleware before the CQRS chain, not by the security decorator, so the throttle decorator has access to user identity.
-- **Logger outside transaction** — captures the full execution time including transaction commit/rollback. If the logger were inside the transaction, slow commits would be invisible in logs.
+- **Throttle outermost** — reject abusers before any work. `SecurityContextInterface` is populated by the framework middleware before the CQRS chain, so the throttle decorator can read the user identity without running the security decorator first.
+- **Security after Throttle** — checks the permission for the dispatched message against `SecurityConfigInterface`. Running it inside Throttle means a blocked abuser is rejected before the permission lookup; running it outside Logger means authorization failures are logged.
+- **Logger outside Transaction** — captures the full execution time including transaction commit/rollback. If the logger were inside the transaction, slow commits would be invisible in logs.
 - **Transaction innermost** — wraps only the handler's DB work and domain event collection.
 
 ### Anonymous Protection Split: HTTP + CQRS
@@ -107,16 +109,24 @@ A single-layer approach (all anonymous throttling at CQRS) was the initial desig
 - Tight IP limits at the CQRS level would block authenticated users behind shared IPs
 - The HTTP layer is the natural place for IP-based flood protection — it sees all requests regardless of routing outcome
 
-### Fail-Open with Exception Layering
+### Fail-Open on Driver Failure
 
 When the storage driver is unavailable, the throttle allows the request through rather than blocking it. This is a deliberate trade-off — temporary loss of rate limiting is preferable to a total service outage.
 
-The fail-open implementation uses two layers of exception handling:
+`RedisThrottler` wraps its connection failures into a driver-agnostic `ThrottleDriverException`. The decorator trait catches this and logs an error; the request proceeds to the handler. The initial implementation caught `RedisConnectionException` directly in the decorator, coupling the CQRS layer to Redis — `ThrottleDriverException` keeps the decorator driver-agnostic.
 
-1. **`ThrottleDriverException`** — A driver-agnostic exception thrown by `RedisThrottler` when Redis is unavailable. The decorator catches this and logs a warning.
-2. **`ThrottleException`** — Created before event firing and thrown after the try-catch block. This ensures a throttle block decision is never swallowed by a driver failure in the event-firing path.
+### Warning/Block Telemetry via Logger
 
-The initial implementation caught `RedisConnectionException` directly in the decorator trait, coupling the CQRS layer to Redis. This was replaced with `ThrottleDriverException` so the decorator only knows about throttle abstractions. Each driver implementation wraps its connection-specific exceptions into `ThrottleDriverException`.
+When the warning threshold or block limit is crossed, the decorator writes a structured `warning`-level log entry with the message class, identifier, request count or retry-after, client IP, and user type. No domain event is emitted.
+
+The initial implementation also published `CqrsThrottleWarningEvent` / `CqrsThrottleBlockedEvent` through the async event pipeline (SQS). This was removed because:
+
+- Throttle telemetry is an **operational** concern (SRE/security observability), not a **domain** event in the DDD sense. No aggregate produces it, no business workflow consumes it.
+- No listener was ever registered for these events — the async pipeline delivered them to nothing.
+- Resolving `AsyncEventProcessorInterface` on every CQRS dispatch loaded the AWS SDK (SqsClient construction, JmesPath, manifest parsing) into every read-path request, costing ~40 ms per request on the hot path.
+- Metrics and alerting are better built on structured logs aggregated by Loki/ELK/CloudWatch, or on Prometheus counters added directly to the decorator when needed — both bypass the SQS round-trip.
+
+If a future requirement needs fan-out (Slack alert, audit table, etc.), it should be implemented as a downstream log-based pipeline or by adding a Prometheus counter, not by resurrecting the per-event async dispatch.
 
 ### Progressive Penalties via Violation Counter
 
@@ -172,8 +182,6 @@ The user type prefix in the identifier (`customer:42` vs `partner:42`) ensures u
 | `ThrottleException` | Domain | Rate limit exceeded — generic message, identifier for logging |
 | `ThrottleDriverException` | Domain | Driver-agnostic connection failure |
 | `ThrottleConfigException` | Domain | Invalid configuration values |
-| `CqrsThrottleWarningEvent` | Domain | Async event: warning threshold crossed |
-| `CqrsThrottleBlockedEvent` | Domain | Async event: request blocked |
 | `UserType` | Domain | Constants: ADMIN, PARTNER, CUSTOMER, ANONYMOUS |
 | `SecurityContextInterface` | Domain | Request-scoped user identity |
 | `ThrottleConfigResolverInterface` | Application | Contract: resolve config by command class and user type |
@@ -182,7 +190,7 @@ The user type prefix in the identifier (`customer:42` vs `partner:42`) ensures u
 | `RedisThrottlerFactory` | Infrastructure | Creates `RedisThrottler` instances |
 | `ThrottleConfigResolver` | Infrastructure | 6-step config resolution with fallback chain |
 | `ThrottleConfigDefaults` | Infrastructure | Default throttle limits per user type |
-| `ThrottleLogicTrait` | Infrastructure | Shared decorator logic: identity resolution, throttle check, event firing |
+| `ThrottleLogicTrait` | Infrastructure | Shared decorator logic: identity resolution, throttle check, logging |
 | `CommandThrottleDecorator` | Infrastructure | `CommandBusInterface` decorator |
 | `QueryThrottleDecorator` | Infrastructure | `QueryBusInterface` decorator |
 
@@ -195,7 +203,8 @@ The user type prefix in the identifier (`customer:42` vs `partner:42`) ensures u
 - Layered resolution provides granularity (per-command, per-user-type) with sensible defaults
 - User type-based exemption handles admin panels and background workers without exclusion lists
 - Driver-agnostic exceptions allow swapping Redis for another storage backend without changing the decorator
-- Fail-open with proper exception layering ensures blocks are enforced even when event firing fails
+- Fail-open on driver failure keeps the service available when Redis is down
+- Warning/block telemetry goes to the logger, not through the async event pipeline — no AWS SDK boot on the hot path, no events with zero listeners
 - Generic exception messages prevent information leakage
 - Progressive penalties discourage repeat offenders while allowing recovery
 
