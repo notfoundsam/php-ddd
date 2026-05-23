@@ -57,7 +57,9 @@ A single default session — cookie name `phpddd`, driver `redis`, configured on
 
 Per-audience cookie names (`phpddd_admin` / `phpddd_partner` / `phpddd_site`) and three subclasses were prototyped first, then dropped: distinct names defended only against a future misconfiguration that set `Domain=.php-ddd.test`, while paying for that defense with a parallel default `phpddd` session forged on every request by FuelPHP's boot path (double Redis SET+EXPIRE per request) and a latent footgun where a bare `Session::set('key', 'value')` in app code writes to the wrong blob.
 
-FuelPHP's SimpleAuth was still rejected on a separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys — a **state-shape** problem (flat top-level keys) independent of which cookie carries the blob. Our custom authenticator namespaces auth state under `user_id` and rotates the session ID on login/logout.
+`SessionAuthenticator` writes **both** `user_id` and `user_type` on login. Each per-audience resolver compares the stored `user_type` against its own constant (`UserType::ADMIN/PARTNER/CUSTOMER`) before calling `findById` against its repository, returning `null` on mismatch. Independent PK sequences across `admin_users` / `partner_users` / `customer_users` mean an unguarded `findById` could silently resolve a foreign id (admin `id=42` while the session holds partner `id=42`) if host scope ever breaks. With the guard, host-scope is **defense-in-depth**: a future `Domain=.php-ddd.test` misconfig now requires *also* spoofing `user_type`, which is set only by `SessionAuthenticator::login` after credential verification through the audience-specific verifier.
+
+FuelPHP's SimpleAuth was still rejected on a separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys with no notion of audience — a **state-shape** problem (flat top-level keys) independent of which cookie carries the blob. The `user_type` discriminator above is the structural fix; rotating the session ID on `login` / `logout` covers fixation.
 
 ### Remember-me via split-token with rotation
 

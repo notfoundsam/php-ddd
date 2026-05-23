@@ -27,4 +27,9 @@ final class SpySessionAuthenticator implements SessionAuthenticatorInterface
     {
         return $this->loggedIn === null ? null : $this->loggedIn->getId();
     }
+
+    public function getCurrentUserType(): ?string
+    {
+        return $this->loggedIn === null ? null : $this->loggedIn->getType();
+    }
 }

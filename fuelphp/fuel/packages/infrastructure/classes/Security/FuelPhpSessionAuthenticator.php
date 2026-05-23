@@ -17,6 +17,7 @@ final class FuelPhpSessionAuthenticator implements SessionAuthenticatorInterface
     {
         $session = $this->session();
         $session->set('user_id', $user->getId());
+        $session->set('user_type', $user->getType());
         $session->rotate();
     }
 
@@ -24,6 +25,7 @@ final class FuelPhpSessionAuthenticator implements SessionAuthenticatorInterface
     {
         $session = $this->session();
         $session->delete('user_id');
+        $session->delete('user_type');
         $session->rotate();
     }
 
@@ -31,6 +33,12 @@ final class FuelPhpSessionAuthenticator implements SessionAuthenticatorInterface
     {
         $userId = $this->session()->get('user_id');
         return $userId === null ? null : (string)$userId;
+    }
+
+    public function getCurrentUserType(): ?string
+    {
+        $type = $this->session()->get('user_type');
+        return $type === null ? null : (string)$type;
     }
 
     private function session(): Session_Driver

@@ -19,4 +19,10 @@ interface SessionAuthenticatorInterface
     public function logout(): void;
 
     public function getCurrentUserId(): ?string;
+
+    /**
+     * Returned together with the user id so the resolver can refuse to look a user id up
+     * against the wrong audience repository if host isolation ever breaks (see ADR-014).
+     */
+    public function getCurrentUserType(): ?string;
 }

@@ -9,6 +9,7 @@ use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterf
 use SharedKernel\Domain\Security\UserRepository\AdminUserRepositoryInterface;
 use SharedKernel\Domain\Security\AuthenticatedUser;
 use SharedKernel\Domain\Security\UserResolverInterface;
+use SharedKernel\Domain\Security\UserType;
 
 final class AdminSessionResolver implements UserResolverInterface
 {
@@ -32,6 +33,11 @@ final class AdminSessionResolver implements UserResolverInterface
     {
         $userId = $this->session->getCurrentUserId();
         if ($userId !== null) {
+            // Reject blobs from another audience: independent PK sequences across user tables
+            // mean an unguarded findById would silently resolve a foreign id (see ADR-014).
+            if ($this->session->getCurrentUserType() !== UserType::ADMIN) {
+                return null;
+            }
             return $this->users->findById($userId);
         }
 
