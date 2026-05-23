@@ -31,3 +31,6 @@ desktop.ini
 /fuel/app/cache/*/*
 !/fuel/app/cache/*/.gitkeep
 /fuel/app/tmp/*
+
+# per-env migration state written by `oil refine migrate`
+/fuel/app/config/*/migrations.php
