@@ -7,7 +7,6 @@ namespace Tests\Unit\SharedKernel\Infrastructure\CqrsMessageBus\Decorators;
 use PHPUnit\Framework\TestCase;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryBusInterface;
 use SharedKernel\Application\Throttle\ThrottleConfigResolverInterface;
-use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Throttle\Exceptions\ThrottleDriverException;
 use SharedKernel\Domain\Security\AuthenticatedUser;
@@ -40,7 +39,6 @@ class QueryThrottleDecoratorTest extends TestCase
         ThrottleConfigResolverInterface $throttleConfig,
         StubSecurityContext $securityContext,
         ?ThrottleFactoryInterface $throttleFactory = null,
-        ?AsyncEventProcessorInterface $asyncEventProcessor = null,
         ?LoggerInterface $logger = null,
         ?StubRequestContext $requestContext = null
     ): QueryThrottleDecorator {
@@ -50,7 +48,6 @@ class QueryThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $requestContext ?? new StubRequestContext('192.168.1.1'),
-            $asyncEventProcessor ?? $this->createMock(AsyncEventProcessorInterface::class),
             $logger ?? $this->createMock(LoggerInterface::class)
         );
     }
@@ -155,7 +152,6 @@ class QueryThrottleDecoratorTest extends TestCase
             $securityContext,
             $factory,
             null,
-            null,
             $requestContext
         );
         $result = $decorator->dispatch(new TestQuery('1'));
@@ -209,7 +205,6 @@ class QueryThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $factory,
-            null,
             $logger
         );
         $result = $decorator->dispatch(new TestQuery('1'));
@@ -217,7 +212,7 @@ class QueryThrottleDecoratorTest extends TestCase
         $this->assertInstanceOf(TestQueryResponse::class, $result);
     }
 
-    public function testWarningThresholdFiresEventAndStillReturnsResponse(): void
+    public function testWarningThresholdLogsAndStillReturnsResponse(): void
     {
         $inner = $this->createInner();
         $config = $this->createConfig();
@@ -231,9 +226,6 @@ class QueryThrottleDecoratorTest extends TestCase
         $factory = $this->createMock(ThrottleFactoryInterface::class);
         $factory->method('create')->willReturn($throttler);
 
-        $asyncProcessor = $this->createMock(AsyncEventProcessorInterface::class);
-        $asyncProcessor->expects($this->once())->method('store');
-
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
@@ -245,7 +237,6 @@ class QueryThrottleDecoratorTest extends TestCase
             $throttleConfig,
             $securityContext,
             $factory,
-            $asyncProcessor,
             $logger
         );
         $result = $decorator->dispatch(new TestQuery('1'));

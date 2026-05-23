@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace SharedKernel\Infrastructure\CqrsMessageBus\Decorators;
 
-use SharedKernel\Domain\Throttle\Events\CqrsThrottleBlockedEvent;
-use SharedKernel\Domain\Throttle\Events\CqrsThrottleWarningEvent;
 use SharedKernel\Domain\Throttle\Exceptions\ThrottleDriverException;
 use SharedKernel\Domain\Throttle\Exceptions\ThrottleException;
-use Throwable;
 
 trait ThrottleLogicTrait
 {
@@ -99,26 +96,10 @@ trait ThrottleLogicTrait
             'message_class' => $messageName,
             'identifier' => $identifier,
             'request_count' => $requestCount,
+            'client_ip' => $clientIp,
+            'user_type' => $userType,
             'throttle_action' => 'warning_triggered',
         ]);
-
-        try {
-            $event = CqrsThrottleWarningEvent::create(
-                $messageType,
-                $messageName,
-                $identifier,
-                $requestCount,
-                $clientIp,
-                $userType
-            );
-            $this->asyncEventProcessor->store($event);
-        } catch (Throwable $e) {
-            $this->logger->error('[THROTTLE] Failed to process warning event', [
-                'error' => $e->getMessage(),
-                'message_type' => $messageType,
-                'identifier' => $identifier,
-            ]);
-        }
     }
 
     private function fireBlockedEvent(
@@ -134,25 +115,9 @@ trait ThrottleLogicTrait
             'message_class' => $messageName,
             'identifier' => $identifier,
             'retry_after' => $retryAfter,
+            'client_ip' => $clientIp,
+            'user_type' => $userType,
             'throttle_action' => 'request_blocked',
         ]);
-
-        try {
-            $event = CqrsThrottleBlockedEvent::create(
-                $messageType,
-                $messageName,
-                $identifier,
-                $retryAfter,
-                $clientIp,
-                $userType
-            );
-            $this->asyncEventProcessor->store($event);
-        } catch (Throwable $e) {
-            $this->logger->error('[THROTTLE] Failed to process blocked event', [
-                'error' => $e->getMessage(),
-                'message_type' => $messageType,
-                'identifier' => $identifier,
-            ]);
-        }
     }
 }

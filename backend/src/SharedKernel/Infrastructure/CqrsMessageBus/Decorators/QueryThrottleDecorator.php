@@ -9,7 +9,6 @@ use SharedKernel\Application\CqrsMessageBus\Queries\QueryInterface;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryResponseInterface;
 use SharedKernel\Application\Http\RequestContextInterface;
 use SharedKernel\Application\Throttle\ThrottleConfigResolverInterface;
-use SharedKernel\Domain\EventSystem\AsyncEventProcessorInterface;
 use SharedKernel\Domain\Logger\LoggerInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
 use SharedKernel\Domain\Throttle\ThrottleFactoryInterface;
@@ -23,7 +22,6 @@ final class QueryThrottleDecorator implements QueryBusInterface
     private ThrottleConfigResolverInterface $throttleConfig;
     private SecurityContextInterface $securityContext;
     private RequestContextInterface $requestContext;
-    private AsyncEventProcessorInterface $asyncEventProcessor;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -32,7 +30,6 @@ final class QueryThrottleDecorator implements QueryBusInterface
         ThrottleConfigResolverInterface $throttleConfig,
         SecurityContextInterface $securityContext,
         RequestContextInterface $requestContext,
-        AsyncEventProcessorInterface $asyncEventProcessor,
         LoggerInterface $logger
     ) {
         $this->inner = $inner;
@@ -40,7 +37,6 @@ final class QueryThrottleDecorator implements QueryBusInterface
         $this->throttleConfig = $throttleConfig;
         $this->securityContext = $securityContext;
         $this->requestContext = $requestContext;
-        $this->asyncEventProcessor = $asyncEventProcessor;
         $this->logger = $logger;
     }
 
