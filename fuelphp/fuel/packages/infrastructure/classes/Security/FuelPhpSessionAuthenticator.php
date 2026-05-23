@@ -44,7 +44,6 @@ final class FuelPhpSessionAuthenticator implements SessionAuthenticatorInterface
     private function session(): Session_Driver
     {
         if ($this->sessionInstance === null) {
-            // Default singleton — driver, cookie name, encrypt/HttpOnly read from app/config/session.php.
             $this->sessionInstance = Session::instance();
         }
         return $this->sessionInstance;

@@ -55,11 +55,11 @@ Chosen against PHP-DI's `name`-parameterized bindings, which move resolution int
 
 A single default session — cookie name `phpddd`, driver `redis`, configured once in `fuel/app/config/session.php` — serves every audience. FuelPHP cookies have no `Domain` attribute, so the browser stores a separate blob per host (`admin.php-ddd.test`, `partner.php-ddd.test`, root). Subdomain dispatch (ADR-013) keeps each portal on its own host, so cross-audience cookie reuse is impossible at the browser level. `FuelPhpSessionAuthenticator` is therefore a single `final` class that calls `Session::instance()` (no arguments) and inherits the cookie name from config.
 
-Per-audience cookie names (`phpddd_admin` / `phpddd_partner` / `phpddd_site`) and three subclasses were prototyped first, then dropped: distinct names defended only against a future misconfiguration that set `Domain=.php-ddd.test`, while paying for that defense with a parallel default `phpddd` session forged on every request by FuelPHP's boot path (double Redis SET+EXPIRE per request) and a latent footgun where a bare `Session::set('key', 'value')` in app code writes to the wrong blob.
+An earlier prototype gave each audience its own cookie name (`phpddd_admin` / `phpddd_partner` / `phpddd_site`); it was dropped because FuelPHP's boot path still forges the default `phpddd` session on every request (double Redis SET+EXPIRE) and a bare `Session::set('key', $value)` in app code would silently land in the wrong blob.
 
-`SessionAuthenticator` writes **both** `user_id` and `user_type` on login. Each per-audience resolver compares the stored `user_type` against its own constant (`UserType::ADMIN/PARTNER/CUSTOMER`) before calling `findById` against its repository, returning `null` on mismatch. Independent PK sequences across `admin_users` / `partner_users` / `customer_users` mean an unguarded `findById` could silently resolve a foreign id (admin `id=42` while the session holds partner `id=42`) if host scope ever breaks. With the guard, host-scope is **defense-in-depth**: a future `Domain=.php-ddd.test` misconfig now requires *also* spoofing `user_type`, which is set only by `SessionAuthenticator::login` after credential verification through the audience-specific verifier.
+Host-scope is treated as defense-in-depth, not as the load-bearing isolation: `SessionAuthenticator::login` stores `user_type` alongside `user_id`, and each per-audience resolver refuses to call `findById` when the session's `user_type` doesn't match its `UserType` constant. Without that guard, independent PK sequences across `admin_users` / `partner_users` / `customer_users` would let a `Domain=.php-ddd.test` misconfig resolve a foreign id under the wrong repository.
 
-FuelPHP's SimpleAuth was still rejected on a separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys with no notion of audience — a **state-shape** problem (flat top-level keys) independent of which cookie carries the blob. The `user_type` discriminator above is the structural fix; rotating the session ID on `login` / `logout` covers fixation.
+FuelPHP's SimpleAuth was rejected on a related but separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys with no audience discriminator at all. The `user_type` key above is the structural fix; `Session::rotate()` on login and logout covers fixation.
 
 ### Remember-me via split-token with rotation
 
@@ -123,7 +123,7 @@ The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not
 - **Signup flow** for customers and partners, including email verification.
 - **Password reset via email** with one-time tokens (same split-token discipline as remember-me).
 - **"Logout from all devices"** — `session_version` column + resolver check.
-- **Per-audience session timeout** — admin 30min, customer 30d. Trivial via independent `expiration_time` per `Session::forge`.
+- **Per-audience session timeout** — admin 30min, customer 30d. With one shared session driver, this means either a `last_activity` check inside `SessionAuthenticator::getCurrentUserId` keyed on `user_type`, or splitting the driver back into per-audience instances.
 - **Password rehash on login** when bcrypt cost changes — `needsRehash()` + UPDATE on the hot path. Defer until first cost-factor upgrade.
 - **Audit log of auth events** — out-of-scope per ADR-008; revisit on regulatory pressure.
 - **Email-keyed throttle on login** as a second layer beside the IP throttle. Useful against credential-stuffing botnets. Requires extending `ThrottleLogicTrait` with a per-command key seam. Carries an account-lockout DoS trade-off — balance via lenient per-email limits and/or CAPTCHA. Defer until production telemetry justifies.
