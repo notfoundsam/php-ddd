@@ -2,9 +2,9 @@
 
 use Fuel\Core\Config;
 use Fuel\Core\Response;
-use Infrastructure\Security\Resolver\PartnerSessionResolver;
 use Infrastructure\Throttle\HttpThrottleTrait;
 use SharedKernel\Domain\Security\SecurityContextInterface;
+use SharedKernel\Domain\Security\UserResolver\PartnerUserResolverInterface;
 
 abstract class Controller_Partner_Abstract extends Controller_Audience
 {
@@ -19,7 +19,7 @@ abstract class Controller_Partner_Abstract extends Controller_Audience
 
         parent::before();
 
-        $user = Container::resolve(PartnerSessionResolver::class)->resolve();
+        $user = Container::resolve(PartnerUserResolverInterface::class)->resolve();
         if ($user !== null) {
             Container::resolve(SecurityContextInterface::class)->setCurrentUser($user);
         }

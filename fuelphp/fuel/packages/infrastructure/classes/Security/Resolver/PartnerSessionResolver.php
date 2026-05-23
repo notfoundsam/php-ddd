@@ -4,42 +4,25 @@ declare(strict_types=1);
 
 namespace Infrastructure\Security\Resolver;
 
-use SharedKernel\Domain\Security\AuthenticatedUser;
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\PartnerSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\PartnerUserRepositoryInterface;
-use SharedKernel\Domain\Security\UserResolverInterface;
+use SharedKernel\Domain\Security\UserResolver\PartnerUserResolverInterface;
+use SharedKernel\Domain\Security\UserType;
+use SharedKernel\Infrastructure\Security\SessionUserResolver;
 
-final class PartnerSessionResolver implements UserResolverInterface
+final class PartnerSessionResolver extends SessionUserResolver implements PartnerUserResolverInterface
 {
-    private PartnerSessionAuthenticatorInterface $session;
-
-    private PartnerRememberMeServiceInterface $rememberMe;
-
-    private PartnerUserRepositoryInterface $users;
-
     public function __construct(
-        PartnerSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         PartnerRememberMeServiceInterface $rememberMe,
         PartnerUserRepositoryInterface $users
     ) {
-        $this->session = $session;
-        $this->rememberMe = $rememberMe;
-        $this->users = $users;
+        parent::__construct($session, $rememberMe, $users);
     }
 
-    public function resolve(): ?AuthenticatedUser
+    protected function expectedUserType(): string
     {
-        $userId = $this->session->getCurrentUserId();
-        if ($userId !== null) {
-            return $this->users->findById($userId);
-        }
-
-        $user = $this->rememberMe->tryReanimate();
-        if ($user === null) {
-            return null;
-        }
-        $this->session->login($user);
-        return $user;
+        return UserType::PARTNER;
     }
 }

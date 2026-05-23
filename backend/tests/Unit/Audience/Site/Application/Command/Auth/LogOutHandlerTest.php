@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use SharedKernel\Domain\Security\AuthenticatedUser;
 use SharedKernel\Domain\Security\UserType;
 use Tests\Fixtures\SharedKernel\Security\SpySiteRememberMeService;
-use Tests\Fixtures\SharedKernel\Security\SpySiteSessionAuthenticator;
+use Tests\Fixtures\SharedKernel\Security\SpySessionAuthenticator;
 use Tests\Fixtures\SharedKernel\Security\StubSecurityContext;
 
 class LogOutHandlerTest extends TestCase
@@ -18,7 +18,7 @@ class LogOutHandlerTest extends TestCase
     public function testLogOutClearsSessionRememberMeAndSecurityContext(): void
     {
         $user = new AuthenticatedUser('100', 'c@example.com', [], UserType::CUSTOMER);
-        $session = new SpySiteSessionAuthenticator();
+        $session = new SpySessionAuthenticator();
         $session->loggedIn = $user;
         $rememberMe = new SpySiteRememberMeService();
         $securityContext = new StubSecurityContext($user);

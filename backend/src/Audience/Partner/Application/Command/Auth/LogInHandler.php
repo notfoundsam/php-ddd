@@ -8,14 +8,14 @@ use DateTimeImmutable;
 use SharedKernel\Domain\Security\Exception\InvalidCredentialsException;
 use SharedKernel\Domain\Security\PasswordVerifier\PartnerPasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\PartnerSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\PartnerUserRepositoryInterface;
 
 final class LogInHandler
 {
     private PartnerPasswordVerifierInterface $verifier;
 
-    private PartnerSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private PartnerRememberMeServiceInterface $rememberMe;
 
@@ -23,7 +23,7 @@ final class LogInHandler
 
     public function __construct(
         PartnerPasswordVerifierInterface $verifier,
-        PartnerSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         PartnerRememberMeServiceInterface $rememberMe,
         PartnerUserRepositoryInterface $users
     ) {

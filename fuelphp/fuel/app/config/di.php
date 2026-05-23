@@ -15,15 +15,16 @@ use Infrastructure\EventSystem\FuelPhpScheduledEventRepository;
 use Infrastructure\Http\FuelPhpRequestContext;
 use Infrastructure\Notification\FuelPhpEmailNotifier;
 use Infrastructure\Security\AdminRememberMeService;
-use Infrastructure\Security\AdminSessionAuthenticator;
 use Infrastructure\Security\AdminUserRepository;
 use Infrastructure\Security\FuelPhpSecurityContext;
+use Infrastructure\Security\FuelPhpSessionAuthenticator;
 use Infrastructure\Security\MysqlRememberTokenRepository;
 use Infrastructure\Security\PartnerRememberMeService;
-use Infrastructure\Security\PartnerSessionAuthenticator;
 use Infrastructure\Security\PartnerUserRepository;
+use Infrastructure\Security\Resolver\AdminSessionResolver;
+use Infrastructure\Security\Resolver\PartnerSessionResolver;
+use Infrastructure\Security\Resolver\SiteSessionResolver;
 use Infrastructure\Security\SiteRememberMeService;
-use Infrastructure\Security\SiteSessionAuthenticator;
 use Infrastructure\Security\SiteUserRepository;
 use SharedKernel\Infrastructure\Security\AdminLocalPasswordVerifier;
 use SharedKernel\Infrastructure\Security\BcryptPasswordHasher;
@@ -50,21 +51,22 @@ use SharedKernel\Domain\Redis\RedisClientInterface;
 use SharedKernel\Domain\Redis\RedisMasterClientInterface;
 use SharedKernel\Domain\Security\PasswordVerifier\AdminPasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\AdminRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\AdminSessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\AdminUserRepositoryInterface;
+use SharedKernel\Domain\Security\UserResolver\AdminUserResolverInterface;
 use SharedKernel\Domain\Security\AuthorizationServiceInterface;
 use SharedKernel\Domain\Security\PasswordVerifier\PartnerPasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\PartnerSessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\PartnerUserRepositoryInterface;
+use SharedKernel\Domain\Security\UserResolver\PartnerUserResolverInterface;
 use SharedKernel\Domain\Security\PasswordHasher\PasswordHasherInterface;
 use SharedKernel\Domain\Security\RememberMe\RememberTokenRepositoryInterface;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\PasswordVerifier\SitePasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\SiteRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\SiteSessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\SiteUserRepositoryInterface;
+use SharedKernel\Domain\Security\UserResolver\SiteUserResolverInterface;
 use SharedKernel\Domain\Storage\StorageInterface;
 use SharedKernel\Domain\Throttle\ThrottleFactoryInterface;
 use SharedKernel\Infrastructure\Cache\CacheFactory;
@@ -130,14 +132,16 @@ $containerBuilder->addDefinitions(array_merge([
     PartnerPasswordVerifierInterface::class => DI\autowire(PartnerLocalPasswordVerifier::class),
     SitePasswordVerifierInterface::class => DI\autowire(SiteLocalPasswordVerifier::class),
 
-    AdminSessionAuthenticatorInterface::class => DI\autowire(AdminSessionAuthenticator::class),
-    PartnerSessionAuthenticatorInterface::class => DI\autowire(PartnerSessionAuthenticator::class),
-    SiteSessionAuthenticatorInterface::class => DI\autowire(SiteSessionAuthenticator::class),
+    SessionAuthenticatorInterface::class => DI\autowire(FuelPhpSessionAuthenticator::class),
 
     RememberTokenRepositoryInterface::class => DI\autowire(MysqlRememberTokenRepository::class),
     AdminRememberMeServiceInterface::class => DI\autowire(AdminRememberMeService::class),
     PartnerRememberMeServiceInterface::class => DI\autowire(PartnerRememberMeService::class),
     SiteRememberMeServiceInterface::class => DI\autowire(SiteRememberMeService::class),
+
+    AdminUserResolverInterface::class => DI\autowire(AdminSessionResolver::class),
+    PartnerUserResolverInterface::class => DI\autowire(PartnerSessionResolver::class),
+    SiteUserResolverInterface::class => DI\autowire(SiteSessionResolver::class),
 
     // Security Config — composed from SharedKernel + per-audience registries.
     // Bounded contexts (Crm, Marketing) own only domain. Audiences (Admin, Partner, Site)

@@ -4,8 +4,8 @@ use Fuel\Core\Config;
 use Fuel\Core\Fuel;
 use Fuel\Core\Input;
 use Fuel\Core\Response;
-use Infrastructure\Security\Resolver\AdminSessionResolver;
 use SharedKernel\Domain\Security\SecurityContextInterface;
+use SharedKernel\Domain\Security\UserResolver\AdminUserResolverInterface;
 
 abstract class Controller_Admin_Abstract extends Controller_Audience
 {
@@ -25,7 +25,7 @@ abstract class Controller_Admin_Abstract extends Controller_Audience
         parent::before();
 
         // Populates SecurityContext only; enforcement is SecurityCommandDecorator's job (ADR-008).
-        $user = Container::resolve(AdminSessionResolver::class)->resolve();
+        $user = Container::resolve(AdminUserResolverInterface::class)->resolve();
         if ($user !== null) {
             Container::resolve(SecurityContextInterface::class)->setCurrentUser($user);
         }

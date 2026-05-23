@@ -7,7 +7,7 @@ namespace Audience\Admin\Application\Command\Auth;
 use DateTimeImmutable;
 use SharedKernel\Domain\Security\PasswordVerifier\AdminPasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\AdminRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\AdminSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\AdminUserRepositoryInterface;
 use SharedKernel\Domain\Security\Exception\InvalidCredentialsException;
 
@@ -15,7 +15,7 @@ final class LogInHandler
 {
     private AdminPasswordVerifierInterface $verifier;
 
-    private AdminSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private AdminRememberMeServiceInterface $rememberMe;
 
@@ -23,7 +23,7 @@ final class LogInHandler
 
     public function __construct(
         AdminPasswordVerifierInterface $verifier,
-        AdminSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         AdminRememberMeServiceInterface $rememberMe,
         AdminUserRepositoryInterface $users
     ) {

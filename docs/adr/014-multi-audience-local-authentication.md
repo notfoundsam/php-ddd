@@ -45,24 +45,21 @@ remember_tokens (selector PK, audience VARCHAR(16), user_id, validator_hash, exp
 
 ### Audience-scoped marker interfaces over named DI bindings
 
-Per-audience seams use empty marker subinterfaces extending a generic base:
-
-```
-SessionAuthenticatorInterface
-    ├── AdminSessionAuthenticatorInterface
-    ├── PartnerSessionAuthenticatorInterface
-    └── SiteSessionAuthenticatorInterface
-```
-
-Same pattern for `PasswordVerifierInterface`, `RememberMeServiceInterface`, `UserRepositoryInterface`. Handlers depend on the typed marker; DI resolves through interface-to-class binding with no string keys. Common logic lives in an abstract parent; concrete classes are two-line wrappers fixing the audience name.
+Per-audience seams that actually diverge — `PasswordVerifierInterface`, `RememberMeServiceInterface`, `UserRepositoryInterface` — use empty marker subinterfaces extending a generic base. Handlers depend on the typed marker; DI resolves through interface-to-class binding with no string keys. Common logic lives in an abstract parent; concrete classes are two-line wrappers fixing the audience name (table name, cookie name for remember-me, etc.).
 
 Chosen against PHP-DI's `name`-parameterized bindings, which move resolution into stringly-typed factory closures — refactor-unsafe, opaque to static analysis, and unable to catch "admin handler wired with partner verifier" at compile time.
 
-### One session cookie per audience, isolated by hostname
+`SessionAuthenticatorInterface` does **not** follow this pattern — there's nothing to discriminate. See "One session per host" below.
 
-Each audience has its own cookie name: `phpddd_admin` on `admin.*`, `phpddd_partner` on `partner.*`, `phpddd` on the root host. Subdomain isolation (ADR-013) prevents cookie reuse between audiences. Each `Controller_<Audience>_Abstract` resolves its per-audience `*SessionAuthenticator`, which lazily forges `Session::instance(<cookie_name>)`.
+### One session per host, isolated by hostname
 
-FuelPHP's SimpleAuth was rejected: it stores `username` / `user_id` / `login_hash` under unprefixed session keys, conflicting across audiences in a single browser. SimpleAuth's instance system separates **config**, not **session state**.
+A single default session — cookie name `phpddd`, driver `redis`, configured once in `fuel/app/config/session.php` — serves every audience. FuelPHP cookies have no `Domain` attribute, so the browser stores a separate blob per host (`admin.php-ddd.test`, `partner.php-ddd.test`, root). Subdomain dispatch (ADR-013) keeps each portal on its own host, so cross-audience cookie reuse is impossible at the browser level. `FuelPhpSessionAuthenticator` is therefore a single `final` class that calls `Session::instance()` (no arguments) and inherits the cookie name from config.
+
+An earlier prototype gave each audience its own cookie name (`phpddd_admin` / `phpddd_partner` / `phpddd_site`); it was dropped because FuelPHP's boot path still forges the default `phpddd` session on every request (double Redis SET+EXPIRE) and a bare `Session::set('key', $value)` in app code would silently land in the wrong blob.
+
+Host-scope is treated as defense-in-depth, not as the load-bearing isolation: `SessionAuthenticator::login` stores `user_type` alongside `user_id`, and each per-audience resolver refuses to call `findById` when the session's `user_type` doesn't match its `UserType` constant. Without that guard, independent PK sequences across `admin_users` / `partner_users` / `customer_users` would let a `Domain=.php-ddd.test` misconfig resolve a foreign id under the wrong repository.
+
+FuelPHP's SimpleAuth was rejected on a related but separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys with no audience discriminator at all. The `user_type` key above is the structural fix; `Session::rotate()` on login and logout covers fixation.
 
 ### Remember-me via split-token with rotation
 
@@ -88,7 +85,7 @@ The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not
 
 `Cookie::set` / `Cookie::get` live **only** inside the FuelPHP-side `RememberMeService`. Handlers and resolvers call semantic methods (`rememberUser`, `tryReanimate`, `forget`).
 
-**Security flags (Secure, HttpOnly, SameSite=Lax) are not per-service.** A single app-level override at `fuelphp/fuel/app/classes/cookie.php` adds them. The FuelPHP session driver delegates to `\Cookie::set` under the hood, so per-audience session cookies inherit them automatically — no `cookie_secure` / `cookie_samesite` in `Session::forge(...)`. Code writing cookies must `use Cookie;` from the global namespace, where the override lives; `use Fuel\Core\Cookie` resolves to the parent and bypasses the override.
+**Security flags (Secure, HttpOnly, SameSite=Lax) are not per-service.** A single app-level override at `fuelphp/fuel/app/classes/cookie.php` adds them. The FuelPHP session driver delegates to `\Cookie::set` under the hood, so the session cookie inherits them automatically — no `cookie_secure` / `cookie_samesite` in `config/session.php`. Code writing cookies must `use Cookie;` from the global namespace, where the override lives; `use Fuel\Core\Cookie` resolves to the parent and bypasses the override.
 
 ### Decorator chain specifics for login
 
@@ -119,14 +116,14 @@ The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not
 
 - High file count, low per-file LOC. The single-class-with-named-bindings alternative was rejected on type-safety grounds.
 - `remember_tokens.user_id` has no FK (polymorphic across three user tables). Application code must delete tokens when a user is deleted. Trigger-based enforcement adds DB-side complexity for a path that runs a few times per day.
-- Pre-existing per-audience interfaces (`UserResolverInterface`, `SecurityConfigInterface`) still use the older one-interface-many-implementations pattern. Aligning them to marker interfaces is a separate refactor.
+- `SecurityConfigInterface` still uses the older one-interface-many-implementations pattern (composed via `SecurityConfigFactory`). `UserResolverInterface` was aligned to marker subinterfaces alongside `PasswordVerifier` / `RememberMeService` / `UserRepository`; `SecurityConfig` is a separate refactor because it composes per-audience pieces into a single bus-facing config rather than fanning out to per-audience handlers.
 
 ### Deferred Decisions
 
 - **Signup flow** for customers and partners, including email verification.
 - **Password reset via email** with one-time tokens (same split-token discipline as remember-me).
 - **"Logout from all devices"** — `session_version` column + resolver check.
-- **Per-audience session timeout** — admin 30min, customer 30d. Trivial via independent `expiration_time` per `Session::forge`.
+- **Per-audience session timeout** — admin 30min, customer 30d. With one shared session driver, this means either a `last_activity` check inside `SessionAuthenticator::getCurrentUserId` keyed on `user_type`, or splitting the driver back into per-audience instances.
 - **Password rehash on login** when bcrypt cost changes — `needsRehash()` + UPDATE on the hot path. Defer until first cost-factor upgrade.
 - **Audit log of auth events** — out-of-scope per ADR-008; revisit on regulatory pressure.
 - **Email-keyed throttle on login** as a second layer beside the IP throttle. Useful against credential-stuffing botnets. Requires extending `ThrottleLogicTrait` with a per-command key seam. Carries an account-lockout DoS trade-off — balance via lenient per-email limits and/or CAPTCHA. Defer until production telemetry justifies.
