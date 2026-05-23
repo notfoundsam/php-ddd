@@ -5,7 +5,7 @@ export default defineConfig({
         outDir: 'dist',
         manifest: true,
         emptyOutDir: true,
-        rollupOptions: {
+        rolldownOptions: {
             input: [
                 'src/site/core.js',
                 'src/site/pages/search.js',
