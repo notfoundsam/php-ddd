@@ -243,4 +243,39 @@ class QueryThrottleDecoratorTest extends TestCase
 
         $this->assertInstanceOf(TestQueryResponse::class, $result);
     }
+
+    public function testBlockLimitCrossedLogsAndThrows(): void
+    {
+        $inner = $this->createMock(QueryBusInterface::class);
+        $inner->expects($this->never())->method('dispatch');
+
+        $config = $this->createConfig();
+
+        $throttleConfig = $this->createMock(ThrottleConfigResolverInterface::class);
+        $throttleConfig->method('resolve')->willReturn(ThrottleResolveResult::forDefault($config));
+
+        // currentAttempts === blockLimit triggers fireBlockedEvent (one log call).
+        $throttler = $this->createMock(ThrottleInterface::class);
+        $throttler->method('attempt')->willReturn(ThrottleResult::blocked(600, $config->getBlockLimit()));
+
+        $factory = $this->createMock(ThrottleFactoryInterface::class);
+        $factory->method('create')->willReturn($throttler);
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+
+        $user = new AuthenticatedUser('42', 'user@example.com', ['user'], UserType::CUSTOMER);
+        $securityContext = new StubSecurityContext($user);
+
+        $decorator = $this->createDecorator(
+            $inner,
+            $throttleConfig,
+            $securityContext,
+            $factory,
+            $logger
+        );
+
+        $this->expectException(ThrottleException::class);
+        $decorator->dispatch(new TestQuery('1'));
+    }
 }
