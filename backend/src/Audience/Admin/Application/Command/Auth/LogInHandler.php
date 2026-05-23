@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Audience\Admin\Application\Command\Auth;
 
 use DateTimeImmutable;
-use SharedKernel\Application\CqrsMessageBus\Commands\CommandInterface;
 use SharedKernel\Domain\Security\PasswordVerifier\AdminPasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\AdminRememberMeServiceInterface;
 use SharedKernel\Domain\Security\SessionAuthenticator\AdminSessionAuthenticatorInterface;
@@ -34,12 +33,8 @@ final class LogInHandler
         $this->users = $users;
     }
 
-    public function __invoke(CommandInterface $command): void
+    public function __invoke(LogInCommand $command): void
     {
-        if (!$command instanceof LogInCommand) {
-            return;
-        }
-
         $user = $this->verifier->verify($command->getEmail(), $command->getPassword());
         if ($user === null) {
             throw InvalidCredentialsException::create();
