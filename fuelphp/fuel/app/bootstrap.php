@@ -19,8 +19,13 @@ require COREPATH . 'bootstrap.php';
     'Log' => APPPATH . 'classes/log.php',
 ));
 
-// Register the autoloader
-\Autoloader::register();
+// Register the FuelPHP autoloader as a fallback after Composer's. FuelPHP's
+// own Autoloader::register() prepends to the SPL stack, which forces every
+// composer-managed class lookup through Autoloader::lower + class_to_path
+// first — measurable hot-path cost. Composer's classmap+PSR-4 covers ~99%
+// of lookups; FuelPHP only needs to resolve its own classes (Fuel\Core\*,
+// Cookie, Log, etc.), so it runs last.
+\spl_autoload_register('Autoloader::load', true, false);
 
 /**
  * Your environment.  Can be set to any of the following:
