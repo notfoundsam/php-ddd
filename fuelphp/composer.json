@@ -52,6 +52,11 @@
       "dealerdirect/phpcodesniffer-composer-installer": true
     }
   },
+  "autoload": {
+    "psr-4": {
+      "Infrastructure\\": "fuel/packages/infrastructure/classes/"
+    }
+  },
   "extra": {
     "installer-paths": {
       "fuel/{$name}": [
