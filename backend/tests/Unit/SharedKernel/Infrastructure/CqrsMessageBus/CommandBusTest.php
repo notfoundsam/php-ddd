@@ -6,7 +6,11 @@ namespace Tests\Unit\SharedKernel\Infrastructure\CqrsMessageBus;
 
 use PHPUnit\Framework\TestCase;
 use SharedKernel\Infrastructure\CqrsMessageBus\CommandBus;
+use SharedKernel\Infrastructure\CqrsMessageBus\HandlerNotCallableException;
 use SharedKernel\Infrastructure\CqrsMessageBus\HandlerNotFoundException;
+use SharedKernel\Infrastructure\CqrsMessageBus\HandlerNotResolvableException;
+use stdClass;
+use Tests\Fixtures\SharedKernel\CqrsMessageBus\InMemoryContainer;
 use Tests\Fixtures\SharedKernel\CqrsMessageBus\TestCommand;
 use Tests\Fixtures\SharedKernel\CqrsMessageBus\TestCommandHandler;
 
@@ -15,8 +19,10 @@ class CommandBusTest extends TestCase
     public function testDispatchInvokesRegisteredHandler(): void
     {
         $handler = new TestCommandHandler();
-        $bus = new CommandBus();
-        $bus->register(TestCommand::class, $handler);
+        $container = new InMemoryContainer([TestCommandHandler::class => $handler]);
+
+        $bus = new CommandBus($container);
+        $bus->register(TestCommand::class, TestCommandHandler::class);
 
         $command = new TestCommand('test-value');
         $bus->dispatch($command);
@@ -25,12 +31,51 @@ class CommandBusTest extends TestCase
         $this->assertSame($command, $handler->getHandled()[0]);
     }
 
+    public function testRegisterDoesNotResolveHandlerEagerly(): void
+    {
+        // Empty container — if register() tried to resolve, this would throw.
+        $bus = new CommandBus(new InMemoryContainer([]));
+        $bus->register(TestCommand::class, TestCommandHandler::class);
+
+        $this->expectNotToPerformAssertions();
+    }
+
     public function testDispatchThrowsForUnregisteredCommand(): void
     {
-        $bus = new CommandBus();
+        $bus = new CommandBus(new InMemoryContainer([]));
 
         $this->expectException(HandlerNotFoundException::class);
         $this->expectExceptionMessage(TestCommand::class);
+
+        $bus->dispatch(new TestCommand('test-value'));
+    }
+
+    public function testDispatchWrapsContainerMissAsHandlerNotResolvable(): void
+    {
+        $bus = new CommandBus(new InMemoryContainer([]));
+        $bus->register(TestCommand::class, TestCommandHandler::class);
+
+        try {
+            $bus->dispatch(new TestCommand('test-value'));
+            $this->fail('Expected HandlerNotResolvableException');
+        } catch (HandlerNotResolvableException $e) {
+            $this->assertStringContainsString(TestCommand::class, $e->getMessage());
+            $this->assertStringContainsString(TestCommandHandler::class, $e->getMessage());
+            $this->assertNotNull($e->getPrevious(), 'Original NotFoundException must be preserved as previous');
+        }
+    }
+
+    public function testDispatchThrowsHandlerNotCallableWhenResolvedHandlerHasNoInvoke(): void
+    {
+        $notCallable = new stdClass();
+        $container = new InMemoryContainer([TestCommandHandler::class => $notCallable]);
+
+        $bus = new CommandBus($container);
+        $bus->register(TestCommand::class, TestCommandHandler::class);
+
+        $this->expectException(HandlerNotCallableException::class);
+        $this->expectExceptionMessage(TestCommand::class);
+        $this->expectExceptionMessage(TestCommandHandler::class);
 
         $bus->dispatch(new TestCommand('test-value'));
     }
