@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\CqrsMessageBus;
 
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandBusInterface;
 use SharedKernel\Application\CqrsMessageBus\Commands\CommandInterface;
 
@@ -37,7 +38,18 @@ final class CommandBus implements CommandBusInterface
             throw HandlerNotFoundException::forCommand($commandClass);
         }
 
-        $handler = $this->container->get($this->handlerClasses[$commandClass]);
+        $handlerClass = $this->handlerClasses[$commandClass];
+
+        try {
+            $handler = $this->container->get($handlerClass);
+        } catch (NotFoundExceptionInterface $e) {
+            throw HandlerNotResolvableException::forCommand($commandClass, $handlerClass, $e);
+        }
+
+        if (!is_callable($handler)) {
+            throw HandlerNotCallableException::forCommand($commandClass, $handlerClass);
+        }
+
         $handler($command);
     }
 }

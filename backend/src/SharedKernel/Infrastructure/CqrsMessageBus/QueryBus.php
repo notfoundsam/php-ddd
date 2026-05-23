@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SharedKernel\Infrastructure\CqrsMessageBus;
 
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryBusInterface;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryInterface;
 use SharedKernel\Application\CqrsMessageBus\Queries\QueryResponseInterface;
@@ -43,7 +44,18 @@ final class QueryBus implements QueryBusInterface
             throw HandlerNotFoundException::forQuery($queryClass);
         }
 
-        $handler = $this->container->get($this->handlerClasses[$queryClass]);
+        $handlerClass = $this->handlerClasses[$queryClass];
+
+        try {
+            $handler = $this->container->get($handlerClass);
+        } catch (NotFoundExceptionInterface $e) {
+            throw HandlerNotResolvableException::forQuery($queryClass, $handlerClass, $e);
+        }
+
+        if (!is_callable($handler)) {
+            throw HandlerNotCallableException::forQuery($queryClass, $handlerClass);
+        }
+
         return $handler($query);
     }
 }
