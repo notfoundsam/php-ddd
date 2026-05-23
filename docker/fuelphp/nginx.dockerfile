@@ -1,5 +1,5 @@
 ARG NGINX_IMAGE=nginx:alpine
-ARG ASSETS_IMAGE=node:latest
+ARG ASSETS_IMAGE=node:24-alpine
 
 FROM $ASSETS_IMAGE AS assets
 WORKDIR /app
