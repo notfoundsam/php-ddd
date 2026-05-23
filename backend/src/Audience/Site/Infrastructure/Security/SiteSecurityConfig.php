@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Audience\Site\Infrastructure\Security;
 
+use Audience\Site\Application\Command\Auth\LogInCommand;
+use Audience\Site\Application\Command\Auth\LogOutCommand;
 use Audience\Site\Application\Query\SearchCatalogProducts\SearchCatalogProductsQuery;
 use Audience\Site\Application\Query\ViewCatalogHomePage\ViewCatalogHomePageQuery;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
@@ -12,7 +14,10 @@ final class SiteSecurityConfig implements SecurityConfigInterface
 {
     public function getCommandPermissions(): array
     {
-        return [];
+        return [
+            LogInCommand::class => null,
+            LogOutCommand::class => null,
+        ];
     }
 
     public function getQueryPermissions(): array

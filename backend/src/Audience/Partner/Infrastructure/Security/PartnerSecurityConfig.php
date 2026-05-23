@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Audience\Partner\Infrastructure\Security;
 
+use Audience\Partner\Application\Command\Auth\LogInCommand;
+use Audience\Partner\Application\Command\Auth\LogOutCommand;
 use SharedKernel\Domain\Security\SecurityConfigInterface;
 
 final class PartnerSecurityConfig implements SecurityConfigInterface
@@ -13,9 +15,10 @@ final class PartnerSecurityConfig implements SecurityConfigInterface
 
     public function getCommandPermissions(): array
     {
-        // TODO: register Partner commands here, e.g.
-        //   CreateLeadCommand::class => 'partner.lead.create',
-        return [];
+        return [
+            LogInCommand::class => null,
+            LogOutCommand::class => null,
+        ];
     }
 
     public function getQueryPermissions(): array

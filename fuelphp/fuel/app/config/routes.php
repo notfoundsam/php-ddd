@@ -22,8 +22,14 @@ return array(
 
 	'_root_' => 'site/home/index',
     'products' => 'site/home/products',
+    'login' => 'site/auth/login',
+    'logout' => 'site/auth/logout',
     'admin' => 'admin/welcome/index',
+    'admin/login' => 'admin/auth/login',
+    'admin/logout' => 'admin/auth/logout',
     'partner' => 'partner/welcome/index',
+    'partner/login' => 'partner/auth/login',
+    'partner/logout' => 'partner/auth/logout',
     'healthcheck' => function () { return Response::forge('healthy'); },
 
 	/**

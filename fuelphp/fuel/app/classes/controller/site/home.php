@@ -9,7 +9,7 @@ class Controller_Site_Home extends Controller_Site_Abstract
     public function action_index()
     {
         $query = ViewCatalogHomePageQuery::fromHttpInput(Input::get());
-        $page = $this->bus->dispatch($query);
+        $page = $this->queryBus->dispatch($query);
 
         return Blade::respond('site.home.index', [
             'title' => 'Shop',
@@ -27,7 +27,7 @@ class Controller_Site_Home extends Controller_Site_Abstract
         }
 
         $query = SearchCatalogProductsQuery::fromHttpInput(Input::get());
-        $response = $this->bus->dispatch($query);
+        $response = $this->queryBus->dispatch($query);
 
         $pushQuery = http_build_query(array_merge($query->getFilters()->toArray(), [
             'page' => $query->getPage(),
