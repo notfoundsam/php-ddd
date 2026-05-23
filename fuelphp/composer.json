@@ -22,6 +22,7 @@
     "ext-redis": "*",
     "ext-json": "*",
     "ext-pcntl": "*",
+    "ext-sodium": "*",
     "composer/installers": "~1.0",
     "app/backend": "@dev",
     "fuel/core": "1.8.*",
@@ -35,6 +36,9 @@
     "php-di/php-di": "^6.4",
     "twilio/sdk": "^8.11",
     "jenssegers/blade": "^1.4"
+  },
+  "replace": {
+    "paragonie/sodium_compat": "*"
   },
   "suggest": {
     "dwoo/dwoo": "Allow Dwoo templating with the Parser package",
