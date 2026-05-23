@@ -116,7 +116,7 @@ The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not
 
 - High file count, low per-file LOC. The single-class-with-named-bindings alternative was rejected on type-safety grounds.
 - `remember_tokens.user_id` has no FK (polymorphic across three user tables). Application code must delete tokens when a user is deleted. Trigger-based enforcement adds DB-side complexity for a path that runs a few times per day.
-- Pre-existing per-audience interfaces (`UserResolverInterface`, `SecurityConfigInterface`) still use the older one-interface-many-implementations pattern. Aligning them to marker interfaces is a separate refactor.
+- `SecurityConfigInterface` still uses the older one-interface-many-implementations pattern (composed via `SecurityConfigFactory`). `UserResolverInterface` was aligned to marker subinterfaces alongside `PasswordVerifier` / `RememberMeService` / `UserRepository`; `SecurityConfig` is a separate refactor because it composes per-audience pieces into a single bus-facing config rather than fanning out to per-audience handlers.
 
 ### Deferred Decisions
 

@@ -2,8 +2,8 @@
 
 use Fuel\Core\Config;
 use Fuel\Core\Response;
-use Infrastructure\Security\Resolver\SiteSessionResolver;
 use SharedKernel\Domain\Security\SecurityContextInterface;
+use SharedKernel\Domain\Security\UserResolver\SiteUserResolverInterface;
 
 abstract class Controller_Site_Abstract extends Controller_Audience
 {
@@ -11,7 +11,7 @@ abstract class Controller_Site_Abstract extends Controller_Audience
     {
         parent::before();
 
-        $user = Container::resolve(SiteSessionResolver::class)->resolve();
+        $user = Container::resolve(SiteUserResolverInterface::class)->resolve();
         if ($user !== null) {
             Container::resolve(SecurityContextInterface::class)->setCurrentUser($user);
         }
