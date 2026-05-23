@@ -24,6 +24,21 @@ class PlaintextPasswordTest extends TestCase
         new PlaintextPassword('');
     }
 
+    public function testPasswordExceeding72BytesRejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('72 bytes');
+
+        new PlaintextPassword(str_repeat('a', 73));
+    }
+
+    public function testPasswordExactly72BytesAccepted(): void
+    {
+        $password = new PlaintextPassword(str_repeat('a', 72));
+
+        $this->assertSame(str_repeat('a', 72), $password->value());
+    }
+
     public function testToStringIsRedacted(): void
     {
         $password = new PlaintextPassword('s3cr3t!');

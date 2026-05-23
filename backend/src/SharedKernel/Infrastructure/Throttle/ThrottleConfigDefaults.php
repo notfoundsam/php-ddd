@@ -12,18 +12,25 @@ use SharedKernel\Domain\Security\UserType;
 final class ThrottleConfigDefaults
 {
     /**
-     * Strict anonymous limit for login attempts: 10 attempts per 10 minutes per IP.
+     * Strict login-attempt limit: 10 / 10 minutes for both anonymous (per-IP) and any
+     * already-authenticated caller (per-user-id). Without the 'authenticated' branch a
+     * stolen low-privilege session could hammer admin login at the per-user-type
+     * default rate (admin = null = no throttle).
+     *
      * Per ADR-014 §"Decorator chain for login commands" this delivers the OWASP-recommended
      * rate-limit on failed authentication with config only, no new code.
      */
+    private const LOGIN_THROTTLE_WINDOW = [
+        'warning_limit' => 7,
+        'block_limit' => 10,
+        'window' => 600,
+        'penalties' => [600, 1800],
+        'recovery_period' => 1800,
+    ];
+
     private const LOGIN_THROTTLE = [
-        'anonymous' => [
-            'warning_limit' => 7,
-            'block_limit' => 10,
-            'window' => 600,
-            'penalties' => [600, 1800],
-            'recovery_period' => 1800,
-        ],
+        'anonymous' => self::LOGIN_THROTTLE_WINDOW,
+        'authenticated' => self::LOGIN_THROTTLE_WINDOW,
     ];
 
     /**

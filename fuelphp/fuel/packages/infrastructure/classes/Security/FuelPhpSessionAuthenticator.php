@@ -47,6 +47,10 @@ abstract class FuelPhpSessionAuthenticator implements SessionAuthenticatorInterf
             if ($existing !== false) {
                 $this->sessionInstance = $existing;
             } else {
+                // Secure=true and SameSite=Lax are applied by the global Cookie::set
+                // override (fuelphp/fuel/app/classes/cookie.php), which the FuelPHP
+                // session driver delegates to. Do NOT duplicate them here, or a future
+                // change to the global policy will silently bypass them per-audience.
                 $this->sessionInstance = Session::forge([
                     'driver' => 'redis',
                     'encrypt_cookie' => false,

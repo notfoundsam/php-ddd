@@ -3,26 +3,39 @@
 use Audience\Site\Application\Command\Auth\LogInCommand;
 use Audience\Site\Application\Command\Auth\LogOutCommand;
 use Fuel\Core\Input;
+use Fuel\Core\Security;
 use Fuel\Core\Validation;
 use SharedKernel\Domain\Security\Exception\InvalidCredentialsException;
 use SharedKernel\Domain\Security\PlaintextPassword;
+use SharedKernel\Domain\Throttle\Exceptions\ThrottleException;
 use SharedKernel\Domain\ValueObjects\EmailAddress;
 
 class Controller_Site_Auth extends Controller_Site_Abstract
 {
     public function get_login()
     {
-        return Blade::respond('site.auth.login');
+        return Blade::respond('site.auth.login', [
+            'csrf_token' => Security::fetch_token(),
+        ]);
     }
 
     public function post_login()
     {
+        if (!Security::check_token()) {
+            return Blade::respond('site.auth.login', [
+                'csrf_token' => Security::fetch_token(),
+                'errors' => ['Your session has expired. Please try again.'],
+                'email' => (string)Input::post('email', ''),
+            ]);
+        }
+
         $validation = Validation::forge('site_login');
         $validation->add('email', 'Email')->add_rule('required')->add_rule('valid_email');
         $validation->add('password', 'Password')->add_rule('required')->add_rule('min_length', 1);
 
         if (!$validation->run(Input::post())) {
             return Blade::respond('site.auth.login', [
+                'csrf_token' => Security::fetch_token(),
                 'errors' => $validation->error_message(),
                 'email' => (string)Input::post('email', ''),
             ]);
@@ -36,7 +49,14 @@ class Controller_Site_Auth extends Controller_Site_Abstract
             ));
         } catch (InvalidCredentialsException $e) {
             return Blade::respond('site.auth.login', [
+                'csrf_token' => Security::fetch_token(),
                 'errors' => ['Invalid email or password.'],
+                'email' => (string)Input::post('email', ''),
+            ]);
+        } catch (ThrottleException $e) {
+            return Blade::respond('site.auth.login', [
+                'csrf_token' => Security::fetch_token(),
+                'errors' => ['Too many login attempts. Please try again later.'],
                 'email' => (string)Input::post('email', ''),
             ]);
         }
@@ -44,8 +64,11 @@ class Controller_Site_Auth extends Controller_Site_Abstract
         return $this->redirect();
     }
 
-    public function action_logout()
+    public function post_logout()
     {
+        if (!Security::check_token()) {
+            return $this->redirect('login');
+        }
         $this->commandBus->dispatch(new LogOutCommand());
         return $this->redirect('login');
     }

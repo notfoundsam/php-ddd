@@ -14,11 +14,12 @@
         </ul>
     @endif
     <form method="POST" action="/login">
+        <input type="hidden" name="fuel_csrf_token" value="{{ $csrf_token ?? '' }}">
         <p>
             <label>Email <input type="email" name="email" value="{{ $email ?? '' }}" required></label>
         </p>
         <p>
-            <label>Password <input type="password" name="password" required></label>
+            <label>Password <input type="password" name="password" maxlength="72" required></label>
         </p>
         <p>
             <label><input type="checkbox" name="remember" value="1"> Remember me</label>
