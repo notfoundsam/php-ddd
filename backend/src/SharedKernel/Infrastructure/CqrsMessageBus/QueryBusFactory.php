@@ -24,11 +24,11 @@ final class QueryBusFactory
 
     public function __invoke(): QueryBusInterface
     {
-        $bus = new QueryBus();
+        $bus = new QueryBus($this->container);
 
         foreach ($this->registries as $registry) {
             foreach ($registry->getQueryHandlers() as $queryClass => $handlerClass) {
-                $bus->register($queryClass, $this->container->get($handlerClass));
+                $bus->register($queryClass, $handlerClass);
             }
         }
 

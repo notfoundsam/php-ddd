@@ -24,11 +24,11 @@ final class CommandBusFactory
 
     public function __invoke(): CommandBusInterface
     {
-        $bus = new CommandBus();
+        $bus = new CommandBus($this->container);
 
         foreach ($this->registries as $registry) {
             foreach ($registry->getCommandHandlers() as $commandClass => $handlerClass) {
-                $bus->register($commandClass, $this->container->get($handlerClass));
+                $bus->register($commandClass, $handlerClass);
             }
         }
 
