@@ -6,18 +6,18 @@ namespace Audience\Partner\Application\Command\Auth;
 
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
 use SharedKernel\Domain\Security\SecurityContextInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\PartnerSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 
 final class LogOutHandler
 {
-    private PartnerSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private PartnerRememberMeServiceInterface $rememberMe;
 
     private SecurityContextInterface $securityContext;
 
     public function __construct(
-        PartnerSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         PartnerRememberMeServiceInterface $rememberMe,
         SecurityContextInterface $securityContext
     ) {

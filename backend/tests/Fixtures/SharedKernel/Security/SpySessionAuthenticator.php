@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\SharedKernel\Security;
 
-use SharedKernel\Domain\Security\SessionAuthenticator\AdminSessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\AuthenticatedUser;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 
-final class SpyAdminSessionAuthenticator implements AdminSessionAuthenticatorInterface
+final class SpySessionAuthenticator implements SessionAuthenticatorInterface
 {
     public ?AuthenticatedUser $loggedIn = null;
 

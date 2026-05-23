@@ -45,24 +45,19 @@ remember_tokens (selector PK, audience VARCHAR(16), user_id, validator_hash, exp
 
 ### Audience-scoped marker interfaces over named DI bindings
 
-Per-audience seams use empty marker subinterfaces extending a generic base:
-
-```
-SessionAuthenticatorInterface
-    ├── AdminSessionAuthenticatorInterface
-    ├── PartnerSessionAuthenticatorInterface
-    └── SiteSessionAuthenticatorInterface
-```
-
-Same pattern for `PasswordVerifierInterface`, `RememberMeServiceInterface`, `UserRepositoryInterface`. Handlers depend on the typed marker; DI resolves through interface-to-class binding with no string keys. Common logic lives in an abstract parent; concrete classes are two-line wrappers fixing the audience name.
+Per-audience seams that actually diverge — `PasswordVerifierInterface`, `RememberMeServiceInterface`, `UserRepositoryInterface` — use empty marker subinterfaces extending a generic base. Handlers depend on the typed marker; DI resolves through interface-to-class binding with no string keys. Common logic lives in an abstract parent; concrete classes are two-line wrappers fixing the audience name (table name, cookie name for remember-me, etc.).
 
 Chosen against PHP-DI's `name`-parameterized bindings, which move resolution into stringly-typed factory closures — refactor-unsafe, opaque to static analysis, and unable to catch "admin handler wired with partner verifier" at compile time.
 
-### One session cookie per audience, isolated by hostname
+`SessionAuthenticatorInterface` does **not** follow this pattern — there's nothing to discriminate. See "One session per host" below.
 
-Each audience has its own cookie name: `phpddd_admin` on `admin.*`, `phpddd_partner` on `partner.*`, `phpddd` on the root host. Subdomain isolation (ADR-013) prevents cookie reuse between audiences. Each `Controller_<Audience>_Abstract` resolves its per-audience `*SessionAuthenticator`, which lazily forges `Session::instance(<cookie_name>)`.
+### One session per host, isolated by hostname
 
-FuelPHP's SimpleAuth was rejected: it stores `username` / `user_id` / `login_hash` under unprefixed session keys, conflicting across audiences in a single browser. SimpleAuth's instance system separates **config**, not **session state**.
+A single default session — cookie name `phpddd`, driver `redis`, configured once in `fuel/app/config/session.php` — serves every audience. FuelPHP cookies have no `Domain` attribute, so the browser stores a separate blob per host (`admin.php-ddd.test`, `partner.php-ddd.test`, root). Subdomain dispatch (ADR-013) keeps each portal on its own host, so cross-audience cookie reuse is impossible at the browser level. `FuelPhpSessionAuthenticator` is therefore a single `final` class that calls `Session::instance()` (no arguments) and inherits the cookie name from config.
+
+Per-audience cookie names (`phpddd_admin` / `phpddd_partner` / `phpddd_site`) and three subclasses were prototyped first, then dropped: distinct names defended only against a future misconfiguration that set `Domain=.php-ddd.test`, while paying for that defense with a parallel default `phpddd` session forged on every request by FuelPHP's boot path (double Redis SET+EXPIRE per request) and a latent footgun where a bare `Session::set('key', 'value')` in app code writes to the wrong blob.
+
+FuelPHP's SimpleAuth was still rejected on a separate ground: it stores `username` / `user_id` / `login_hash` under unprefixed session keys — a **state-shape** problem (flat top-level keys) independent of which cookie carries the blob. Our custom authenticator namespaces auth state under `user_id` and rotates the session ID on login/logout.
 
 ### Remember-me via split-token with rotation
 
@@ -88,7 +83,7 @@ The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not
 
 `Cookie::set` / `Cookie::get` live **only** inside the FuelPHP-side `RememberMeService`. Handlers and resolvers call semantic methods (`rememberUser`, `tryReanimate`, `forget`).
 
-**Security flags (Secure, HttpOnly, SameSite=Lax) are not per-service.** A single app-level override at `fuelphp/fuel/app/classes/cookie.php` adds them. The FuelPHP session driver delegates to `\Cookie::set` under the hood, so per-audience session cookies inherit them automatically — no `cookie_secure` / `cookie_samesite` in `Session::forge(...)`. Code writing cookies must `use Cookie;` from the global namespace, where the override lives; `use Fuel\Core\Cookie` resolves to the parent and bypasses the override.
+**Security flags (Secure, HttpOnly, SameSite=Lax) are not per-service.** A single app-level override at `fuelphp/fuel/app/classes/cookie.php` adds them. The FuelPHP session driver delegates to `\Cookie::set` under the hood, so the session cookie inherits them automatically — no `cookie_secure` / `cookie_samesite` in `config/session.php`. Code writing cookies must `use Cookie;` from the global namespace, where the override lives; `use Fuel\Core\Cookie` resolves to the parent and bypasses the override.
 
 ### Decorator chain specifics for login
 

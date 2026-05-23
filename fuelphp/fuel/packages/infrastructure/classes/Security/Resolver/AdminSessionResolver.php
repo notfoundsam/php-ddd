@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace Infrastructure\Security\Resolver;
 
 use SharedKernel\Domain\Security\RememberMe\AdminRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\AdminSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\AdminUserRepositoryInterface;
 use SharedKernel\Domain\Security\AuthenticatedUser;
 use SharedKernel\Domain\Security\UserResolverInterface;
 
 final class AdminSessionResolver implements UserResolverInterface
 {
-    private AdminSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private AdminRememberMeServiceInterface $rememberMe;
 
     private AdminUserRepositoryInterface $users;
 
     public function __construct(
-        AdminSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         AdminRememberMeServiceInterface $rememberMe,
         AdminUserRepositoryInterface $users
     ) {

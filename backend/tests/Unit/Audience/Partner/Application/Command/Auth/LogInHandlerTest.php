@@ -13,7 +13,7 @@ use SharedKernel\Domain\Security\PlaintextPassword;
 use SharedKernel\Domain\Security\UserType;
 use SharedKernel\Domain\ValueObjects\EmailAddress;
 use Tests\Fixtures\SharedKernel\Security\SpyPartnerRememberMeService;
-use Tests\Fixtures\SharedKernel\Security\SpyPartnerSessionAuthenticator;
+use Tests\Fixtures\SharedKernel\Security\SpySessionAuthenticator;
 use Tests\Fixtures\SharedKernel\Security\SpyPartnerUserRepository;
 use Tests\Fixtures\SharedKernel\Security\StubPartnerPasswordVerifier;
 
@@ -22,7 +22,7 @@ class LogInHandlerTest extends TestCase
     public function testSuccessfulLoginCallsSessionAndUpdatesLastLogin(): void
     {
         $user = new AuthenticatedUser('7', 'partner@example.com', ['partner_owner'], UserType::PARTNER);
-        $session = new SpyPartnerSessionAuthenticator();
+        $session = new SpySessionAuthenticator();
         $rememberMe = new SpyPartnerRememberMeService();
         $users = new SpyPartnerUserRepository();
 
@@ -38,7 +38,7 @@ class LogInHandlerTest extends TestCase
     public function testRememberFlagCallsRememberMe(): void
     {
         $user = new AuthenticatedUser('7', 'partner@example.com', ['partner_owner'], UserType::PARTNER);
-        $session = new SpyPartnerSessionAuthenticator();
+        $session = new SpySessionAuthenticator();
         $rememberMe = new SpyPartnerRememberMeService();
         $users = new SpyPartnerUserRepository();
 
@@ -51,7 +51,7 @@ class LogInHandlerTest extends TestCase
 
     public function testInvalidCredentialsThrowAndSkipSession(): void
     {
-        $session = new SpyPartnerSessionAuthenticator();
+        $session = new SpySessionAuthenticator();
         $rememberMe = new SpyPartnerRememberMeService();
         $users = new SpyPartnerUserRepository();
 

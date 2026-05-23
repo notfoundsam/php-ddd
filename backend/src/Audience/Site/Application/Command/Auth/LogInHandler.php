@@ -8,14 +8,14 @@ use DateTimeImmutable;
 use SharedKernel\Domain\Security\Exception\InvalidCredentialsException;
 use SharedKernel\Domain\Security\PasswordVerifier\SitePasswordVerifierInterface;
 use SharedKernel\Domain\Security\RememberMe\SiteRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\SiteSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\SiteUserRepositoryInterface;
 
 final class LogInHandler
 {
     private SitePasswordVerifierInterface $verifier;
 
-    private SiteSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private SiteRememberMeServiceInterface $rememberMe;
 
@@ -23,7 +23,7 @@ final class LogInHandler
 
     public function __construct(
         SitePasswordVerifierInterface $verifier,
-        SiteSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         SiteRememberMeServiceInterface $rememberMe,
         SiteUserRepositoryInterface $users
     ) {

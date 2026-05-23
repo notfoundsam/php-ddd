@@ -6,20 +6,20 @@ namespace Infrastructure\Security\Resolver;
 
 use SharedKernel\Domain\Security\AuthenticatedUser;
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
-use SharedKernel\Domain\Security\SessionAuthenticator\PartnerSessionAuthenticatorInterface;
+use SharedKernel\Domain\Security\SessionAuthenticator\SessionAuthenticatorInterface;
 use SharedKernel\Domain\Security\UserRepository\PartnerUserRepositoryInterface;
 use SharedKernel\Domain\Security\UserResolverInterface;
 
 final class PartnerSessionResolver implements UserResolverInterface
 {
-    private PartnerSessionAuthenticatorInterface $session;
+    private SessionAuthenticatorInterface $session;
 
     private PartnerRememberMeServiceInterface $rememberMe;
 
     private PartnerUserRepositoryInterface $users;
 
     public function __construct(
-        PartnerSessionAuthenticatorInterface $session,
+        SessionAuthenticatorInterface $session,
         PartnerRememberMeServiceInterface $rememberMe,
         PartnerUserRepositoryInterface $users
     ) {
