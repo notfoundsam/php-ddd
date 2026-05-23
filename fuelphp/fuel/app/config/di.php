@@ -120,8 +120,7 @@ $containerBuilder->addDefinitions(array_merge([
     RequestContextInterface::class => DI\autowire(FuelPhpRequestContext::class),
 
     // Authentication: password hashing, per-audience verifiers, sessions, remember-me.
-    PasswordHasherInterface::class => DI\autowire(BcryptPasswordHasher::class)
-        ->constructorParameter('cost', 12),
+    PasswordHasherInterface::class => DI\autowire(BcryptPasswordHasher::class),
 
     AdminUserRepositoryInterface::class => DI\autowire(AdminUserRepository::class),
     PartnerUserRepositoryInterface::class => DI\autowire(PartnerUserRepository::class),
@@ -136,13 +135,9 @@ $containerBuilder->addDefinitions(array_merge([
     SiteSessionAuthenticatorInterface::class => DI\autowire(SiteSessionAuthenticator::class),
 
     RememberTokenRepositoryInterface::class => DI\autowire(MysqlRememberTokenRepository::class),
-    // 30-day remember-me TTL: 30 * 86400 = 2592000 seconds.
-    AdminRememberMeServiceInterface::class => DI\autowire(AdminRememberMeService::class)
-        ->constructorParameter('ttlSeconds', 2592000),
-    PartnerRememberMeServiceInterface::class => DI\autowire(PartnerRememberMeService::class)
-        ->constructorParameter('ttlSeconds', 2592000),
-    SiteRememberMeServiceInterface::class => DI\autowire(SiteRememberMeService::class)
-        ->constructorParameter('ttlSeconds', 2592000),
+    AdminRememberMeServiceInterface::class => DI\autowire(AdminRememberMeService::class),
+    PartnerRememberMeServiceInterface::class => DI\autowire(PartnerRememberMeService::class),
+    SiteRememberMeServiceInterface::class => DI\autowire(SiteRememberMeService::class),
 
     // Security Config — composed from SharedKernel + per-audience registries.
     // Bounded contexts (Crm, Marketing) own only domain. Audiences (Admin, Partner, Site)

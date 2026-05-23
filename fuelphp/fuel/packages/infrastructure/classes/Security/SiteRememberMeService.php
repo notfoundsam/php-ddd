@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Infrastructure\Security;
 
+use Config;
 use Cookie;
 use SharedKernel\Domain\Security\RememberMe\RememberTokenRepositoryInterface;
 use SharedKernel\Domain\Security\RememberMe\SiteRememberMeServiceInterface;
@@ -18,10 +19,10 @@ final class SiteRememberMeService extends SplitTokenRememberMeService implements
 
     public function __construct(
         RememberTokenRepositoryInterface $tokens,
-        SiteUserRepositoryInterface $users,
-        int $ttlSeconds
+        SiteUserRepositoryInterface $users
     ) {
-        parent::__construct($tokens, $users, $ttlSeconds, self::AUDIENCE);
+        Config::load('security', true);
+        parent::__construct($tokens, $users, (int)Config::get('security.remember_me.ttl_seconds'), self::AUDIENCE);
     }
 
     protected function cookieName(): string
