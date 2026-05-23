@@ -32,11 +32,12 @@ require COREPATH . 'bootstrap.php';
  */
 Fuel::$env = Arr::get($_SERVER, 'FUEL_ENV', Arr::get($_ENV, 'FUEL_ENV', getenv('FUEL_ENV') ?: Fuel::DEVELOPMENT));
 
+// Initialize the framework first so always_load.packages register their
+// namespaces with the autoloader before PHP-DI compiles its container.
+\Fuel::init('config.php');
+
 // Load PHP-DI container
 $container = require APPPATH . 'config/di.php';
 
 // Make the container accessible globally
 $GLOBALS['container'] = $container;
-
-// Initialize the framework with the config file.
-\Fuel::init('config.php');
