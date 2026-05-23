@@ -10,12 +10,7 @@ final class PlaintextPassword
 {
     private const REDACTED = '[REDACTED]';
 
-    /**
-     * Bcrypt silently truncates input beyond 72 bytes. Rejecting at the VO boundary
-     * stops a user from registering "passwordA" (where the 73rd byte is "A") and then
-     * logging in with "passwordB" — both hash to the same bcrypt because bytes past
-     * the 72nd are ignored.
-     */
+    /** bcrypt truncates beyond 72 bytes; see ADR-014. */
     private const MAX_BYTES = 72;
 
     private string $value;

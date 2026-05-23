@@ -13,10 +13,8 @@ use SharedKernel\Domain\Security\UserRepository\UserRepositoryInterface;
 
 abstract class SplitTokenRememberMeService implements RememberMeServiceInterface
 {
-    /** 12 random bytes → 24 hex chars. */
     private const SELECTOR_BYTES = 12;
 
-    /** 32 random bytes → 64 hex chars. */
     private const VALIDATOR_BYTES = 32;
 
     private RememberTokenRepositoryInterface $tokens;
@@ -128,10 +126,6 @@ abstract class SplitTokenRememberMeService implements RememberMeServiceInterface
         $this->clearCookie($this->cookieName());
     }
 
-    /**
-     * Returns the cookie name this audience instance writes to.
-     * Concrete subclasses fix this to a per-audience constant (e.g. 'remember_admin').
-     */
     abstract protected function cookieName(): string;
 
     abstract protected function writeCookie(string $name, string $value, int $ttlSeconds): void;
@@ -140,17 +134,13 @@ abstract class SplitTokenRememberMeService implements RememberMeServiceInterface
 
     abstract protected function clearCookie(string $name): void;
 
-    /**
-     * Override in tests if deterministic time is needed.
-     */
+    /** Override in tests for deterministic time. */
     protected function now(): DateTimeImmutable
     {
         return new DateTimeImmutable();
     }
 
-    /**
-     * Override in tests if deterministic values are needed.
-     */
+    /** Override in tests for deterministic values. */
     protected function randomHex(int $bytes): string
     {
         return bin2hex(random_bytes($bytes));

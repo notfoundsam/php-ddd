@@ -120,9 +120,6 @@ $containerBuilder->addDefinitions(array_merge([
     RequestContextInterface::class => DI\autowire(FuelPhpRequestContext::class),
 
     // Authentication: password hashing, per-audience verifiers, sessions, remember-me.
-    // Marker interfaces (AdminPasswordVerifierInterface etc.) bind 1:1 to concrete
-    // classes — PHP-DI uses the typed constructor signature to inject the correct
-    // per-audience repository into each concrete (no named bindings).
     PasswordHasherInterface::class => DI\autowire(BcryptPasswordHasher::class)
         ->constructorParameter('cost', 12),
 

@@ -31,7 +31,7 @@ class Controller_Admin_Auth extends Controller_Admin_Abstract
 
         $validation = Validation::forge('admin_login');
         $validation->add('email', 'Email')->add_rule('required')->add_rule('valid_email');
-        $validation->add('password', 'Password')->add_rule('required')->add_rule('min_length', 1);
+        $validation->add('password', 'Password')->add_rule('required')->add_rule('min_length', 1)->add_rule('max_length', 72);
 
         if (!$validation->run(Input::post())) {
             return Blade::respond('admin.auth.login', [
@@ -64,6 +64,8 @@ class Controller_Admin_Auth extends Controller_Admin_Abstract
         return $this->redirect();
     }
 
+    // Any logout button/form must include `fuel_csrf_token` (via Security::fetch_token()).
+    // Without it this action silently redirects to /login — no-op rather than logout.
     public function post_logout()
     {
         if (!Security::check_token()) {

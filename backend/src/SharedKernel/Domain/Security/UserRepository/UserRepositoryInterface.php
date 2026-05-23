@@ -15,7 +15,6 @@ interface UserRepositoryInterface
     public function findById(string $id): ?AuthenticatedUser;
 
     /**
-     * Returns the stored password hash for the given email, or null if no user exists.
      * Separate method so {@see AuthenticatedUser} never carries the hash.
      */
     public function getPasswordHashByEmail(EmailAddress $email): ?string;

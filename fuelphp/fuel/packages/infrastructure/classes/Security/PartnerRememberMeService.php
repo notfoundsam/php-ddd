@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Infrastructure\Security;
 
-use Fuel\Core\Cookie;
+use Cookie;
 use SharedKernel\Domain\Security\RememberMe\PartnerRememberMeServiceInterface;
 use SharedKernel\Domain\Security\UserRepository\PartnerUserRepositoryInterface;
 use SharedKernel\Domain\Security\RememberMe\RememberTokenRepositoryInterface;
@@ -31,6 +31,8 @@ final class PartnerRememberMeService extends SplitTokenRememberMeService impleme
 
     protected function writeCookie(string $name, string $value, int $ttlSeconds): void
     {
+        // `use Cookie;` from the global namespace is deliberate; `use Fuel\Core\Cookie;`
+        // would resolve to the parent and drop SameSite=Lax (see ADR-014).
         Cookie::set($name, $value, $ttlSeconds, '/', null, true, true);
     }
 

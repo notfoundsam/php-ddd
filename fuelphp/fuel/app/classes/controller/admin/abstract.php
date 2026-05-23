@@ -24,10 +24,7 @@ abstract class Controller_Admin_Abstract extends Controller_Audience
 
         parent::before();
 
-        // before() only POPULATES the security context — it does NOT enforce auth.
-        // Enforcement is the SecurityCommandDecorator's job (ADR-008): commands with
-        // a non-null permission throw UnauthenticatedException; LogIn has null permission
-        // and naturally passes through for anonymous users.
+        // Populates SecurityContext only; enforcement is SecurityCommandDecorator's job (ADR-008).
         $user = Container::resolve(AdminSessionResolver::class)->resolve();
         if ($user !== null) {
             Container::resolve(SecurityContextInterface::class)->setCurrentUser($user);

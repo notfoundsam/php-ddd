@@ -17,8 +17,6 @@ interface RememberTokenRepositoryInterface
     ): void;
 
     /**
-     * Returns the token row or null if not found.
-     *
      * @return array{
      *     selector: string,
      *     audience: string,
@@ -36,8 +34,7 @@ interface RememberTokenRepositoryInterface
     public function deleteByUserAndAudience(string $userId, string $audience): void;
 
     /**
-     * Deletes all tokens whose expires_at is in the past relative to $now.
-     * Returns the number of deleted rows.
+     * @return int number of deleted rows
      */
     public function purgeExpired(DateTimeImmutable $now): int;
 }

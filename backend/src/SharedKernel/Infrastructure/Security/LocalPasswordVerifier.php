@@ -17,15 +17,7 @@ abstract class LocalPasswordVerifier implements PasswordVerifierInterface
 
     private PasswordHasherInterface $hasher;
 
-    /**
-     * Bcrypt hash used solely for response-time equalization when a user is not found.
-     * Computed once at construction with the injected hasher so the dummy's cost always
-     * matches the real verify path — otherwise the unknown-user branch leaks via timing.
-     * Eagerly initialized (rather than lazily on first miss) so the first unknown-user
-     * lookup per worker doesn't pay an extra hash() that subsequent ones don't —
-     * which would itself leak worker freshness via wall-time.
-     * The plaintext is throwaway random bytes; never stored, never compared.
-     */
+    /** Pre-computed bcrypt for timing equalization on unknown-user branch; see ADR-014. */
     private string $dummyHash;
 
     public function __construct(UserRepositoryInterface $users, PasswordHasherInterface $hasher)
