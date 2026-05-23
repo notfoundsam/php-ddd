@@ -14,7 +14,7 @@ final class QueryBus implements QueryBusInterface
 {
     private ContainerInterface $container;
 
-    /** @var array<class-string, class-string> */
+    /** @var array<class-string<QueryInterface>, class-string> */
     private array $handlerClasses = [];
 
     public function __construct(ContainerInterface $container)
@@ -23,7 +23,7 @@ final class QueryBus implements QueryBusInterface
     }
 
     /**
-     * @param class-string $queryClass
+     * @param class-string<QueryInterface> $queryClass
      * @param class-string $handlerClass
      */
     public function register(string $queryClass, string $handlerClass): void
