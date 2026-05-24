@@ -5,53 +5,26 @@ declare(strict_types=1);
 namespace Tests\Unit\Audience\Site\Application\Query\SearchCatalogProducts;
 
 use Audience\Site\Application\Query\SearchCatalogProducts\SearchCatalogProductsQuery;
+use Catalog\Application\ReadModel\SearchFilters;
 use PHPUnit\Framework\TestCase;
 
 class SearchCatalogProductsQueryTest extends TestCase
 {
-    public function testFromHttpInputDefaultsToPageOneWhenAbsent(): void
+    public function testPageBelowOneClampsToOne(): void
     {
-        $q = SearchCatalogProductsQuery::fromHttpInput([]);
+        $q = new SearchCatalogProductsQuery(new SearchFilters(), -2);
         $this->assertSame(1, $q->getPage());
     }
 
-    public function testFromHttpInputParsesNumericStringPage(): void
+    public function testPageZeroClampsToOne(): void
     {
-        $q = SearchCatalogProductsQuery::fromHttpInput(['page' => '3']);
-        $this->assertSame(3, $q->getPage());
-    }
-
-    public function testFromHttpInputAcceptsIntPage(): void
-    {
-        $q = SearchCatalogProductsQuery::fromHttpInput(['page' => 5]);
-        $this->assertSame(5, $q->getPage());
-    }
-
-    public function testFromHttpInputCoercesNonNumericPageToOne(): void
-    {
-        $q = SearchCatalogProductsQuery::fromHttpInput(['page' => 'abc']);
+        $q = new SearchCatalogProductsQuery(new SearchFilters(), 0);
         $this->assertSame(1, $q->getPage());
     }
 
-    public function testFromHttpInputCoercesNegativePageToOne(): void
+    public function testPerPageBelowOneFallsBackToDefault(): void
     {
-        $q = SearchCatalogProductsQuery::fromHttpInput(['page' => '-2']);
-        $this->assertSame(1, $q->getPage());
-    }
-
-    public function testFromHttpInputCoercesZeroPageToOne(): void
-    {
-        $q = SearchCatalogProductsQuery::fromHttpInput(['page' => 0]);
-        $this->assertSame(1, $q->getPage());
-    }
-
-    public function testFromHttpInputBuildsFiltersFromSameInput(): void
-    {
-        $q = SearchCatalogProductsQuery::fromHttpInput([
-            'category' => ['cat-1'],
-            'page' => '2',
-        ]);
-        $this->assertSame(['cat-1'], $q->getFilters()->getCategoryIds());
-        $this->assertSame(2, $q->getPage());
+        $q = new SearchCatalogProductsQuery(new SearchFilters(), 1, 0);
+        $this->assertSame(SearchCatalogProductsQuery::DEFAULT_PER_PAGE, $q->getPerPage());
     }
 }

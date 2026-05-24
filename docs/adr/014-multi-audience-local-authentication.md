@@ -73,13 +73,11 @@ The validator is never stored in plaintext, so a database leak yields no usable 
 
 Laravel's built-in single-column `remember_token` was rejected: it cannot support multi-device login, and DB leakage yields direct-use cookies.
 
-### Input validation in the controller; VOs in the command
+### Input validation in a Form class; VOs in the command
 
-Controllers run FuelPHP `Validation` on raw POST (format, length, presence, `match_field` for password confirmation). On success, the controller constructs `EmailAddress` / `PlaintextPassword` VOs and passes them into the command. Commands carry **only typed VOs**.
+HTTP-layer input validation lives in a per-action Form class (ADR-015) that wraps FuelPHP `Validation` and `Lang`. On success the form constructs `EmailAddress` / `PlaintextPassword` VOs and returns a `LogInCommand` via `toCommand()`. Commands carry **only typed VOs**.
 
 This keeps the throttle decorator (outermost) from burning on malformed input, and keeps the bus surface clean — one command per business intent, not one per HTTP form shape. `PlaintextPassword` redacts in `__toString` / `__debugInfo` / `json_encode` so credentials cannot leak through logging.
-
-The `Command::fromHttpInput()` shape used by audience queries (ADR-011) is **not** applied here — login forms have form-specific concerns (cross-field password confirmation, view-bound validation errors) that are awkward on the command itself.
 
 ### Cookie attributes via global `Cookie::set` override
 
