@@ -8,7 +8,11 @@ class Controller_Site_Home extends Controller_Site_Abstract
 {
     public function action_index()
     {
-        $query = ViewCatalogHomePageQuery::fromHttpInput(Input::get());
+        $raw = Input::get();
+        $query = new ViewCatalogHomePageQuery(
+            Form_Site_Catalog_Filters::parse($raw),
+            Form_Site_Catalog_Filters::parsePage($raw),
+        );
         $page = $this->queryBus->dispatch($query);
 
         return Blade::respond('site.home.index', [
@@ -23,10 +27,14 @@ class Controller_Site_Home extends Controller_Site_Abstract
     {
         if (Input::headers('HX-Request') !== 'true') {
             $qs = Input::server('QUERY_STRING', '');
-            return \Fuel\Core\Response::redirect('/' . ($qs !== '' ? '?' . $qs : ''));
+            return $this->redirect($qs !== '' ? '?' . $qs : '');
         }
 
-        $query = SearchCatalogProductsQuery::fromHttpInput(Input::get());
+        $raw = Input::get();
+        $query = new SearchCatalogProductsQuery(
+            Form_Site_Catalog_Filters::parse($raw),
+            Form_Site_Catalog_Filters::parsePage($raw),
+        );
         $response = $this->queryBus->dispatch($query);
 
         $pushQuery = http_build_query(array_merge($query->getFilters()->toArray(), [

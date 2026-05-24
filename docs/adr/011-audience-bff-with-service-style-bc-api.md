@@ -44,10 +44,11 @@ A version of this with `Catalog\Application\Query\…` classes was tried first �
 
 Audiences (`Audience/Site/`, `Audience/Admin/`, `Audience/Partner/`) own:
 
-- **CQRS messages** — `*Query`, `*Command`, `*Response` classes that go through the bus. They exist *because* the audience wants the bus decorators (throttle, security, logger, transaction).
-- **HTTP-input parsing** — query classes declare `static fromHttpInput(array $raw): self`. Controllers do `Query::fromHttpInput(Input::get())` and never touch `$_GET` shapes themselves. Strict-typed constructors stay available for programmatic callers (tests, future internal code).
+- **CQRS messages** — `*Query`, `*Command`, `*Response` classes that go through the bus. They exist *because* the audience wants the bus decorators (throttle, security, logger, transaction). Messages take typed VOs and primitives through their constructor; they have no knowledge of raw HTTP shapes.
 - **Permission registry** — `*SecurityConfig` lives in the audience, listing the audience's queries/commands with their permissions (per ADR-008's fail-closed model).
 - **Composition** — when a page needs more than one piece of data, the audience defines a **composite query** that returns one response wrapping the parts (`ViewCatalogHomePageResponse` = `ProductSearchResult` + `FilterFacets`).
+
+HTTP-input parsing is **not** an audience concern — it is delegated to per-action Form classes (ADR-015) that build the typed audience message from `$_GET`/`$_POST`. Form classes are framework-specific (FuelPHP today, Laravel `FormRequest` tomorrow); the audience messages they produce are framework-agnostic.
 
 The audience handler delegates to BC services by direct method call:
 
@@ -93,13 +94,13 @@ Inside the BC, the service has whatever signature it likes. Inside an audience, 
 
 ## Components
 
-Reference implementation lives under `backend/src/Catalog/` (service + read models, no bus apparatus inside the BC) and `backend/src/Audience/Site/` (composite + single-purpose queries with `fromHttpInput`, a `QueryHandlerRegistry`, a `SecurityConfig` mapping both queries to `null` for public access per ADR-008).
+Reference implementation lives under `backend/src/Catalog/` (service + read models, no bus apparatus inside the BC) and `backend/src/Audience/Site/` (composite + single-purpose queries, a `QueryHandlerRegistry`, a `SecurityConfig` mapping both queries to `null` for public access per ADR-008). HTTP-input parsing is owned by per-action Form classes per ADR-015.
 
-Controller is two lines of meaningful work — parse HTTP input into a typed query, dispatch:
+Controller is two lines of meaningful work — build the typed query through the form, dispatch:
 
 ```php
-$query = ViewCatalogHomePageQuery::fromHttpInput(Input::get());
-$page = $this->bus->dispatch($query);
+$query = Form_Site_Catalog_Home::fromHttpInput(Input::get())->toQuery();
+$page = $this->queryBus->dispatch($query);
 ```
 
 Rendering belongs to ADR-012.

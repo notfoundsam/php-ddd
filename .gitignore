@@ -2,3 +2,6 @@
 
 # SSL certificates (generated locally with mkcert)
 /dev-tools/certs/
+
+# Playwright MCP tool artifacts (per-session snapshots/console logs)
+/.playwright-mcp/
